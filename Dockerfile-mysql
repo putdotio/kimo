@@ -1,0 +1,15 @@
+FROM ubuntu:xenial
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get -y install mysql-server-5.7
+
+ARG MYSQL_USER=kimo
+ARG MYSQL_PASSWORD=123
+
+ADD docker-mysql-init.sh /tmp/
+
+RUN ["bash", "/tmp/docker-mysql-init.sh"]
+
+ENTRYPOINT ["mysqld"]
+
+EXPOSE 3306

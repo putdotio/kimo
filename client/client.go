@@ -3,6 +3,7 @@ package client
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -49,7 +50,7 @@ func Run(host, user, password string) error {
 
 	m := groupByHost(mysqlProcesses)
 
-	serverResponses := make([]KimoServerResponse, 1)
+	serverResponses := make([]KimoServerResponse, 0)
 	fmt.Println("grouped:")
 	for host, ports := range m {
 		// todo: debug log
@@ -73,7 +74,7 @@ func Run(host, user, password string) error {
 }
 
 func portsAsString(ports []uint32) string {
-	portsArray := make([]string, 1)
+	portsArray := make([]string, 0)
 	for _, port := range ports {
 		portsArray = append(portsArray, fmt.Sprint(port))
 	}
@@ -86,8 +87,8 @@ func getResponseFromServer(host string, ports []uint32) (*KimoServerResponse, er
 	// todo: host validation
 	// todo: server port as config or cli argument
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
-	// todo: http or
-	url := fmt.Sprintf("https://%s:8090/conns?ports=", host, portsAsString(ports))
+	// todo: http or https
+	url := fmt.Sprintf("http://%s:8090/conns?ports=%s", host, portsAsString(ports))
 	// todo: use request with context
 	// todo: timeout
 	fmt.Println("Requesting to ", url)
@@ -96,11 +97,21 @@ func getResponseFromServer(host string, ports []uint32) (*KimoServerResponse, er
 		return nil, err
 	}
 	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		fmt.Printf("Error: %s\n", response.Status)
+		// todo: return appropriate error
+		return nil, errors.New("status code is not 200")
+	}
 
 	ksr := KimoServerResponse{}
 	err = json.NewDecoder(response.Body).Decode(&ksr)
 	// todo: handle tcpproxy
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
 
+	fmt.Printf("Got response: %+v\n", ksr)
 	return &ksr, nil
 }
 
@@ -108,14 +119,18 @@ func groupByHost(mysqlProcesses []mysqlProcess) map[string][]uint32 {
 	m := make(map[string][]uint32)
 
 	for _, proc := range mysqlProcesses {
-		if val, ok := m[proc.Host]; ok {
+		val, ok := m[proc.Host]
+		fmt.Println("proc.Host:", proc.Host)
+		if ok {
 			m[proc.Host] = append(val, proc.Port)
+			fmt.Println("xx:", proc.Port)
 		} else {
-			m[proc.Host] = make([]uint32, 0)
-			m[proc.Host] = append(m[proc.Host], proc.Port)
+			m[proc.Host] = []uint32{proc.Port}
+			fmt.Println("yy:", proc.Port)
 		}
 	}
 
+	fmt.Printf("%+v\n", m)
 	return m
 
 }
@@ -146,7 +161,7 @@ func getMysqlProcesses(host, user, password string) ([]mysqlProcess, error) {
 		return nil, err
 	}
 
-	mysqlProcesses := make([]mysqlProcess, 1)
+	mysqlProcesses := make([]mysqlProcess, 0)
 	for results.Next() {
 		var mysqlProcess mysqlProcess
 		var host string

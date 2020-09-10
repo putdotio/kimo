@@ -1,0 +1,13 @@
+# Start from a Debian image with the latest version of Go installed
+# and a workspace (GOPATH) configured at /go.
+FROM kimo-server
+
+RUN go get github.com/cenkalti/tcpproxy
+
+RUN mkdir /app
+RUN cd /go/src/github.com/cenkalti/tcpproxy/cmd/tcpproxy; go build; cp tcpproxy /app/
+
+ADD tcpproxy-entrypoint.sh /tmp/
+ENTRYPOINT ["bash", "/tmp/tcpproxy-entrypoint.sh"]
+
+EXPOSE 3307

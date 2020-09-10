@@ -81,18 +81,22 @@ func conns(w http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Println("ports: ", ports)
 
-	connStatList, err := gopsutilNet.Connections("net")
+	connections, err := gopsutilNet.Connections("all")
 	if err != nil {
-		// todo: handle
+		fmt.Println("Error while getting connections: ", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	processes, nil := gopsutilProcess.Processes()
 	if err != nil {
-		// todo: handle
+		fmt.Println("Error while getting connections: ", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-
 	result := make([]KimoProcess, 0)
-	for _, conn := range connStatList {
+
+	for _, conn := range connections {
 		if !isRequestedPort(conn.Laddr.Port, ports) {
 			continue
 		}

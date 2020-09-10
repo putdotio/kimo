@@ -1,0 +1,5 @@
+FROM kimo
+ADD kimo-server-entrypoint.sh /tmp/
+
+ENTRYPOINT ["bash", "/tmp/kimo-server-entrypoint.sh"]
+EXPOSE 3303
