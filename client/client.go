@@ -8,7 +8,6 @@ import (
 	"kimo/tcpproxy"
 	"kimo/types"
 	"net/http"
-	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -100,16 +99,6 @@ func getProxyRecord(kimoProcess types.ServerProcess, proxyRecords []types.TcpPro
 	fmt.Println("Could not found!")
 
 	return nil, errors.New("could not found")
-
-}
-
-func portsAsString(ports []uint32) string {
-	portsArray := make([]string, 0)
-	for _, port := range ports {
-		portsArray = append(portsArray, fmt.Sprint(port))
-	}
-
-	return strings.Join(portsArray, ",")
 
 }
 
