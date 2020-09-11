@@ -28,7 +28,6 @@ type Addr struct {
 }
 type KimoProcess struct {
 	Laddr  gopsutilNet.Addr `json:"localaddr"`
-	Raddr  gopsutilNet.Addr `json:"remoteaddr"`
 	Status string           `json:"status"`
 	Pid    int32            `json:"pid"`
 	// CmdLine string  `json:"cmdline"`  // how to get this?
@@ -115,7 +114,6 @@ func conns(w http.ResponseWriter, req *http.Request) {
 
 		result = append(result, KimoProcess{
 			Laddr:  conn.Laddr,
-			Raddr:  conn.Raddr,
 			Status: conn.Status,
 			Pid:    conn.Pid,
 			Name:   name,
