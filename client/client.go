@@ -157,49 +157,6 @@ func getResponseFromServer(host string, port uint32) (*types.KimoProcess, error)
 	return nil, errors.New("could not found")
 }
 
-// todo: instead of a concrete type, there should be an interface like Process" and we should accept that as param
-//       so, we can use this function for both of mysqlProcess and KimoProcess types.
-func groupByHost(mysqlProcesses []mysqlProcess) map[string][]uint32 {
-	m := make(map[string][]uint32)
-
-	for _, proc := range mysqlProcesses {
-		val, ok := m[proc.Host]
-		fmt.Println("proc.Host:", proc.Host)
-		if ok {
-			m[proc.Host] = append(val, proc.Port)
-			fmt.Println("xx:", proc.Port)
-		} else {
-			m[proc.Host] = []uint32{proc.Port}
-			fmt.Println("yy:", proc.Port)
-		}
-	}
-
-	fmt.Printf("%+v\n", m)
-	return m
-
-}
-
-// todo: DRY.
-func groupByHost2(kimoProcesses []*types.KimoProcess) map[string][]uint32 {
-	m := make(map[string][]uint32)
-
-	for _, proc := range kimoProcesses {
-		val, ok := m[proc.Laddr.IP]
-		fmt.Println("proc.Host:", proc.Laddr.IP)
-		if ok {
-			m[proc.Laddr.IP] = append(val, proc.Laddr.Port)
-			fmt.Println("xx:", proc.Laddr.Port)
-		} else {
-			m[proc.Laddr.IP] = []uint32{proc.Laddr.Port}
-			fmt.Println("yy:", proc.Laddr.Port)
-		}
-	}
-
-	fmt.Printf("%+v\n", m)
-	return m
-
-}
-
 type mysqlProcess struct {
 	ID      int32          `json:"id"`
 	User    string         `json:"user"`
