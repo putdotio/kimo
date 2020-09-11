@@ -22,13 +22,13 @@ import (
 
 // todo: DRY.
 type KimoProcess struct {
-	Laddr  gopsutilNet.Addr `json:"localaddr"`
-	Status string           `json:"status"`
-	Pid    int32            `json:"pid"`
-	// CmdLine string  `json:"cmdline"`  // how to get this?
-	Name       string `json:"name"`
+	Laddr      gopsutilNet.Addr `json:"localaddr"`
+	Status     string           `json:"status"`
+	Pid        int32            `json:"pid"`
+	Name       string           `json:"name"`
 	TcpProxies []Addr
 	Hostname   string
+	CmdLine    string `json:"cmdline"`
 }
 
 type KimoServerResponse struct {
@@ -98,6 +98,7 @@ func Run(host, user, password string) error {
 		kp.Pid = res.Pid
 		kp.Status = res.Status
 		kp.Hostname = res.Hostname
+		kp.CmdLine = res.CmdLine
 	}
 	for _, kp := range kimoProcesses {
 		fmt.Printf("final: %+v\n", kp)

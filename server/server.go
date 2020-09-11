@@ -27,11 +27,11 @@ type Addr struct {
 	Port uint32 `json:"port"`
 }
 type KimoProcess struct {
-	Laddr  gopsutilNet.Addr `json:"localaddr"`
-	Status string           `json:"status"`
-	Pid    int32            `json:"pid"`
-	// CmdLine string  `json:"cmdline"`  // how to get this?
-	Name string `json:"name"`
+	Laddr   gopsutilNet.Addr `json:"localaddr"`
+	Status  string           `json:"status"`
+	Pid     int32            `json:"pid"`
+	Name    string           `json:"name"`
+	CmdLine string           `json:"cmdline"`
 }
 
 type KimoResponse struct {
@@ -111,14 +111,19 @@ func conns(w http.ResponseWriter, req *http.Request) {
 			name = "" // todo: a const like "UNKNOWN"??
 			// todo: handle
 		}
+		cmdline, err := process.Cmdline()
+		if err != nil {
+			cmdline = "" // todo: a const like "UNKNOWN"??
+			// todo: handle
+		}
 
 		result = append(result, KimoProcess{
-			Laddr:  conn.Laddr,
-			Status: conn.Status,
-			Pid:    conn.Pid,
-			Name:   name,
+			Laddr:   conn.Laddr,
+			Status:  conn.Status,
+			Pid:     conn.Pid,
+			Name:    name,
+			CmdLine: cmdline,
 		})
-		// retrieve cmdline
 	}
 	w.Header().Set("Content-Type", "application/json")
 
