@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"kimo/tcpproxy"
+	"kimo/types"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	gopsutilNet "github.com/shirou/gopsutil/net"
 )
 
 // query information_schema.processlist table
@@ -21,20 +21,6 @@ import (
 // display results
 
 // todo: DRY.
-type KimoProcess struct {
-	Laddr      gopsutilNet.Addr `json:"localaddr"`
-	Status     string           `json:"status"`
-	Pid        int32            `json:"pid"`
-	Name       string           `json:"name"`
-	TcpProxies []Addr
-	Hostname   string
-	CmdLine    string `json:"cmdline"`
-}
-
-type KimoServerResponse struct {
-	Hostname      string        `json:"hostname"`
-	KimoProcesses []KimoProcess `json:"processes"`
-}
 
 func Run(host, user, password string) error {
 	// get mysql info
@@ -43,7 +29,7 @@ func Run(host, user, password string) error {
 		return err
 	}
 
-	kimoProcesses := make([]*KimoProcess, 0)
+	kimoProcesses := make([]*types.KimoProcess, 0)
 	// get server info
 	for _, proc := range mysqlProcesses {
 		// todo: debug log
@@ -57,7 +43,7 @@ func Run(host, user, password string) error {
 	}
 
 	// todo: should be run in parallel.
-	proxyAddresses, err := getResponseFromTcpProxy()
+	proxyAddresses, err := tcpproxy.GetResponseFromTcpProxy()
 	if err != nil {
 		// todo: handle error
 	}
@@ -77,7 +63,7 @@ func Run(host, user, password string) error {
 
 			// todo: can we handle this without overriding existing values?
 			fmt.Printf("overriding %s -> %s && %d -> %d \n", kimoProcess.Laddr.IP, addr.IP, kimoProcess.Laddr.Port, addr.Port)
-			kimoProcess.TcpProxies = append(kimoProcess.TcpProxies, Addr{kimoProcess.Laddr.IP, kimoProcess.Laddr.Port})
+			kimoProcess.TcpProxies = append(kimoProcess.TcpProxies, types.Addr{kimoProcess.Laddr.IP, kimoProcess.Laddr.Port})
 			kimoProcess.Laddr.IP = addr.IP
 			kimoProcess.Laddr.Port = addr.Port
 		}
@@ -107,13 +93,13 @@ func Run(host, user, password string) error {
 	return nil
 }
 
-func getRealHostAddr(kimoProcess KimoProcess, proxyAddresses []TcpProxyRecord) (*Addr, error) {
+func getRealHostAddr(kimoProcess types.KimoProcess, proxyAddresses []tcpproxy.TcpProxyRecord) (*types.Addr, error) {
 	fmt.Printf("looking for: %+v\n", kimoProcess)
 	for _, proxyAddress := range proxyAddresses {
 		fmt.Printf("proxyAddress: %+v\n", proxyAddress)
-		if proxyAddress.proxyOutput.IP == kimoProcess.Laddr.IP && proxyAddress.proxyOutput.Port == kimoProcess.Laddr.Port {
+		if proxyAddress.ProxyOutput.IP == kimoProcess.Laddr.IP && proxyAddress.ProxyOutput.Port == kimoProcess.Laddr.Port {
 			fmt.Println("found!")
-			return &Addr{proxyAddress.clientOutput.IP, proxyAddress.clientOutput.Port}, nil
+			return &types.Addr{proxyAddress.ClientOutput.IP, proxyAddress.ClientOutput.Port}, nil
 		}
 	}
 	fmt.Println("Could not found!")
@@ -133,7 +119,7 @@ func portsAsString(ports []uint32) string {
 }
 
 // todo: bad naming
-func getResponseFromServer(host string, port uint32) (*KimoProcess, error) {
+func getResponseFromServer(host string, port uint32) (*types.KimoProcess, error) {
 	// todo: host validation
 	// todo: server port as config or cli argument
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
@@ -153,7 +139,7 @@ func getResponseFromServer(host string, port uint32) (*KimoProcess, error) {
 		return nil, errors.New("status code is not 200")
 	}
 
-	ksr := KimoServerResponse{}
+	ksr := types.KimoServerResponse{}
 	err = json.NewDecoder(response.Body).Decode(&ksr)
 	// todo: handle tcpproxy
 	if err != nil {
@@ -169,99 +155,6 @@ func getResponseFromServer(host string, port uint32) (*KimoProcess, error) {
 	}
 
 	return nil, errors.New("could not found")
-}
-
-type Addr struct {
-	IP   string `json:"ip"`
-	Port uint32 `json:"port"`
-}
-
-type TcpProxyRecord struct {
-	proxyInput   Addr
-	proxyOutput  Addr
-	mysqlInput   Addr
-	clientOutput Addr
-}
-
-func getResponseFromTcpProxy() ([]TcpProxyRecord, error) {
-	var httpClient = &http.Client{Timeout: 2 * time.Second}
-	// todo: tcpproxy url as config
-	url := fmt.Sprintf("http://tcpproxy:3307/conns")
-	fmt.Println("Requesting to tcpproxy ", url)
-	response, err := httpClient.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != 200 {
-		fmt.Printf("Error: %s\n", response.Status)
-		// todo: return appropriate error
-		return nil, errors.New("status code is not 200")
-	}
-
-	// Read all the response body
-	contents, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
-	}
-
-	records := strings.Split(string(contents), "\n")
-
-	addresses := make([]TcpProxyRecord, 0)
-	for _, record := range records {
-		fmt.Println("record: ", record)
-		addr, err := parseTcpProxyRecord(record)
-		if err != nil {
-			// todo: debug log
-			continue
-		}
-		if addr == nil {
-			// todo: debug log
-			continue
-		}
-		addresses = append(addresses, *addr)
-	}
-	return addresses, nil
-}
-
-func parseTcpProxyRecord(record string) (*TcpProxyRecord, error) {
-	// Sample Output:
-	// 10.0.4.219:36149 -> 10.0.0.68:3306 -> 10.0.0.68:35423 -> 10.0.0.241:3306
-	// <client>:<output_port> -> <proxy>:<input_port> -> <proxy>:<output_port>: -> <mysql>:<input_port>
-	record = strings.TrimSpace(record)
-	items := strings.Split(record, "->")
-	var tcpAddr TcpProxyRecord
-	for idx, item := range items {
-		hostURL := strings.TrimSpace(item)
-		parts := strings.Split(hostURL, ":")
-		// todo: we should not need this. handle.
-		if len(parts) < 2 {
-			return nil, nil
-		}
-		port, err := strconv.ParseInt(parts[1], 10, 32)
-
-		if err != nil {
-			fmt.Printf("error during string to int32: %s\n", err)
-			// todo: handle error and return zero value of Addr
-		}
-		// todo: DRY.
-		if idx == 0 {
-			tcpAddr.clientOutput.IP = parts[0]
-			tcpAddr.clientOutput.Port = uint32(port)
-		} else if idx == 1 {
-			tcpAddr.proxyInput.IP = parts[0]
-			tcpAddr.proxyInput.Port = uint32(port)
-		} else if idx == 2 {
-			tcpAddr.proxyOutput.IP = parts[0]
-			tcpAddr.proxyOutput.Port = uint32(port)
-		} else if idx == 3 {
-			tcpAddr.mysqlInput.IP = parts[0]
-			tcpAddr.mysqlInput.Port = uint32(port)
-		}
-	}
-
-	return &tcpAddr, nil
 }
 
 // todo: instead of a concrete type, there should be an interface like Process" and we should accept that as param
@@ -287,7 +180,7 @@ func groupByHost(mysqlProcesses []mysqlProcess) map[string][]uint32 {
 }
 
 // todo: DRY.
-func groupByHost2(kimoProcesses []*KimoProcess) map[string][]uint32 {
+func groupByHost2(kimoProcesses []*types.KimoProcess) map[string][]uint32 {
 	m := make(map[string][]uint32)
 
 	for _, proc := range kimoProcesses {

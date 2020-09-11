@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"kimo/types"
 	"net/http"
 	"os"
 	"strconv"
@@ -21,23 +22,6 @@ import (
 //  process name
 //  host name
 //
-
-type Addr struct {
-	IP   string `json:"ip"`
-	Port uint32 `json:"port"`
-}
-type KimoProcess struct {
-	Laddr   gopsutilNet.Addr `json:"localaddr"`
-	Status  string           `json:"status"`
-	Pid     int32            `json:"pid"`
-	Name    string           `json:"name"`
-	CmdLine string           `json:"cmdline"`
-}
-
-type KimoResponse struct {
-	Hostname      string        `json:"hostname"`
-	HostProcesses []KimoProcess `json:"processes"`
-}
 
 func parsePorts(w http.ResponseWriter, req *http.Request) []uint32 {
 	portsParam, ok := req.URL.Query()["ports"]
@@ -93,7 +77,7 @@ func conns(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	result := make([]KimoProcess, 0)
+	result := make([]types.KimoProcess, 0)
 
 	for _, conn := range connections {
 		if !isRequestedPort(conn.Laddr.Port, ports) {
@@ -117,7 +101,7 @@ func conns(w http.ResponseWriter, req *http.Request) {
 			// todo: handle
 		}
 
-		result = append(result, KimoProcess{
+		result = append(result, types.KimoProcess{
 			Laddr:   conn.Laddr,
 			Status:  conn.Status,
 			Pid:     conn.Pid,
@@ -132,9 +116,9 @@ func conns(w http.ResponseWriter, req *http.Request) {
 		// todo: handle error
 	}
 
-	response := &KimoResponse{
+	response := &types.KimoServerResponse{
 		Hostname:      hostname,
-		HostProcesses: result,
+		KimoProcesses: result,
 	}
 	json.NewEncoder(w).Encode(response)
 
