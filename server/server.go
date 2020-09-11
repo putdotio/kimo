@@ -77,7 +77,7 @@ func conns(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	result := make([]types.KimoProcess, 0)
+	serverProcesses := make([]types.ServerProcess, 0)
 
 	for _, conn := range connections {
 		if !isRequestedPort(conn.Laddr.Port, ports) {
@@ -101,7 +101,7 @@ func conns(w http.ResponseWriter, req *http.Request) {
 			// todo: handle
 		}
 
-		result = append(result, types.KimoProcess{
+		serverProcesses = append(serverProcesses, types.ServerProcess{
 			Laddr:   conn.Laddr,
 			Status:  conn.Status,
 			Pid:     conn.Pid,
@@ -117,8 +117,8 @@ func conns(w http.ResponseWriter, req *http.Request) {
 	}
 
 	response := &types.KimoServerResponse{
-		Hostname:      hostname,
-		KimoProcesses: result,
+		Hostname:        hostname,
+		ServerProcesses: serverProcesses,
 	}
 	json.NewEncoder(w).Encode(response)
 

@@ -1,6 +1,8 @@
 package types
 
 import (
+	"database/sql"
+
 	_ "github.com/go-sql-driver/mysql"
 	gopsutilNet "github.com/shirou/gopsutil/net"
 )
@@ -10,7 +12,7 @@ type Addr struct {
 	Port uint32 `json:"port"`
 }
 
-type KimoProcess struct {
+type ServerProcess struct {
 	Laddr      gopsutilNet.Addr `json:"localaddr"`
 	Status     string           `json:"status"`
 	Pid        int32            `json:"pid"`
@@ -18,9 +20,35 @@ type KimoProcess struct {
 	TcpProxies []Addr           `json:"tcpproxies"`
 	Hostname   string           `json:"hostname"`
 	CmdLine    string           `json:"cmdline"`
+	Type       string           `json:"type"` // whether tcpproxy or kimo-server process. todo: should be simple & clean.
 }
 
+type MysqlProcess struct {
+	ID      int32          `json:"id"`
+	User    string         `json:"user"`
+	Host    string         `json:"host"`
+	Port    uint32         `json:"port"`
+	DB      sql.NullString `json:"db"`
+	Command string         `json:"command"`
+	Time    string         `json:"time"`
+	State   sql.NullString `json:"state"`
+	Info    sql.NullString `json:"info"`
+}
+
+type TcpProxyRecord struct {
+	ProxyInput   Addr
+	ProxyOutput  Addr
+	MysqlInput   Addr
+	ClientOutput Addr
+}
+
+type KimoProcess struct {
+	ServerProcess   *ServerProcess
+	TcpProxyProcess *ServerProcess
+	MysqlProcess    *MysqlProcess
+	TcpProxyRecord  *TcpProxyRecord
+}
 type KimoServerResponse struct {
-	Hostname      string        `json:"hostname"`
-	KimoProcesses []KimoProcess `json:"processes"`
+	Hostname        string          `json:"hostname"`
+	ServerProcesses []ServerProcess `json:"processes"`
 }

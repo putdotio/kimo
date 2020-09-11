@@ -16,12 +16,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// query information_schema.processlist table
-// collect data from servers
-// display results
-
-// todo: DRY.
-
 func Run(host, user, password string) error {
 	// get mysql info
 	mysqlProcesses, err := getMysqlProcesses(host, user, password)
@@ -31,15 +25,23 @@ func Run(host, user, password string) error {
 
 	kimoProcesses := make([]*types.KimoProcess, 0)
 	// get server info
-	for _, proc := range mysqlProcesses {
+	for _, mp := range mysqlProcesses {
+		var kp types.KimoProcess
 		// todo: debug log
-		fmt.Printf("%+v\n", proc)
-		kp, err := getResponseFromServer(proc.Host, proc.Port)
+		fmt.Printf("%+v\n", mp)
+		sp, err := getResponseFromServer(mp.Host, mp.Port)
 		if err != nil {
 			fmt.Println(err.Error())
 			continue
 		}
-		kimoProcesses = append(kimoProcesses, kp)
+		// todo: find a better way.
+		if sp.Type == "tcpproxy" {
+			kp.TcpProxyProcess = sp
+		} else {
+			kp.ServerProcess = sp
+		}
+		kp.MysqlProcess = mp
+		kimoProcesses = append(kimoProcesses, &kp)
 	}
 
 	// todo: should be run in parallel.
@@ -52,54 +54,49 @@ func Run(host, user, password string) error {
 	fmt.Printf("Getting real host ips for %d processes...\n", len(kimoProcesses))
 	// todo: this should be recursive
 	// set real host ip & address
-	for _, kimoProcess := range kimoProcesses {
-		fmt.Printf("kimoProcess: %+v\n", kimoProcess)
-		if kimoProcess.Name == "tcpproxy" {
-			addr, nil := getRealHostAddr(*kimoProcess, proxyAddresses)
+	for _, kp := range kimoProcesses {
+		fmt.Printf("KimoProcess: %+v\n", kp)
+		if kp.TcpProxyProcess != nil {
+			pr, nil := getProxyRecord(*kp.TcpProxyProcess, proxyAddresses)
 			if err != nil {
 				fmt.Println(err.Error())
 				continue
 			}
-
-			// todo: can we handle this without overriding existing values?
-			fmt.Printf("overriding %s -> %s && %d -> %d \n", kimoProcess.Laddr.IP, addr.IP, kimoProcess.Laddr.Port, addr.Port)
-			kimoProcess.TcpProxies = append(kimoProcess.TcpProxies, types.Addr{kimoProcess.Laddr.IP, kimoProcess.Laddr.Port})
-			kimoProcess.Laddr.IP = addr.IP
-			kimoProcess.Laddr.Port = addr.Port
+			kp.TcpProxyRecord = pr
 		}
 	}
 
+	// todo: DRY.
+	// todo: we should find the real process recursive.
 	for _, kp := range kimoProcesses {
 		// todo: debug log
-		fmt.Println("host2:", kp.Laddr.IP, "port2:", kp.Laddr.Port)
-		// todo: bad naming
-		res, err := getResponseFromServer(kp.Laddr.IP, kp.Laddr.Port)
+		sp, err := getResponseFromServer(kp.TcpProxyRecord.ClientOutput.IP, kp.TcpProxyRecord.ClientOutput.Port)
 
 		if err != nil {
 			fmt.Println(err.Error())
 			continue
 		}
-		// override
-		kp.Name = res.Name
-		kp.Pid = res.Pid
-		kp.Status = res.Status
-		kp.Hostname = res.Hostname
-		kp.CmdLine = res.CmdLine
+		kp.ServerProcess = sp
+
 	}
 	for _, kp := range kimoProcesses {
-		fmt.Printf("final: %+v\n", kp)
+		fmt.Printf("final kp: %+v\n", kp)
+		fmt.Printf("final sp: %+v\n", kp.ServerProcess)
+		fmt.Printf("final tp: %+v\n", kp.TcpProxyProcess)
+		fmt.Printf("final mp: %+v\n", kp.MysqlProcess)
+		fmt.Printf("final tcp: %+v\n", kp.TcpProxyRecord)
 	}
 
 	return nil
 }
 
-func getRealHostAddr(kimoProcess types.KimoProcess, proxyAddresses []tcpproxy.TcpProxyRecord) (*types.Addr, error) {
+func getProxyRecord(kimoProcess types.ServerProcess, proxyRecords []types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
 	fmt.Printf("looking for: %+v\n", kimoProcess)
-	for _, proxyAddress := range proxyAddresses {
-		fmt.Printf("proxyAddress: %+v\n", proxyAddress)
-		if proxyAddress.ProxyOutput.IP == kimoProcess.Laddr.IP && proxyAddress.ProxyOutput.Port == kimoProcess.Laddr.Port {
+	for _, pr := range proxyRecords {
+		fmt.Printf("proxyRecord: %+v\n", pr)
+		if pr.ProxyOutput.IP == kimoProcess.Laddr.IP && pr.ProxyOutput.Port == kimoProcess.Laddr.Port {
 			fmt.Println("found!")
-			return &types.Addr{proxyAddress.ClientOutput.IP, proxyAddress.ClientOutput.Port}, nil
+			return &pr, nil
 		}
 	}
 	fmt.Println("Could not found!")
@@ -119,7 +116,7 @@ func portsAsString(ports []uint32) string {
 }
 
 // todo: bad naming
-func getResponseFromServer(host string, port uint32) (*types.KimoProcess, error) {
+func getResponseFromServer(host string, port uint32) (*types.ServerProcess, error) {
 	// todo: host validation
 	// todo: server port as config or cli argument
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
@@ -147,29 +144,22 @@ func getResponseFromServer(host string, port uint32) (*types.KimoProcess, error)
 		return nil, err
 	}
 
-	for _, kp := range ksr.KimoProcesses {
-		if kp.Laddr.Port == port {
-			kp.Hostname = ksr.Hostname
-			return &kp, nil
+	for _, sp := range ksr.ServerProcesses {
+		if sp.Laddr.Port == port {
+			sp.Hostname = ksr.Hostname
+			if sp.Name == "tcpproxy" {
+				sp.Type = "tcpproxy"
+			} else {
+				sp.Type = "kimo-server"
+			}
+			return &sp, nil
 		}
 	}
 
 	return nil, errors.New("could not found")
 }
 
-type mysqlProcess struct {
-	ID      int32          `json:"id"`
-	User    string         `json:"user"`
-	Host    string         `json:"host"`
-	Port    uint32         `json:"port"`
-	DB      sql.NullString `json:"db"`
-	Command string         `json:"command"`
-	Time    string         `json:"time"`
-	State   sql.NullString `json:"state"`
-	Info    sql.NullString `json:"info"`
-}
-
-func getMysqlProcesses(host, user, password string) ([]mysqlProcess, error) {
+func getMysqlProcesses(host, user, password string) ([]*types.MysqlProcess, error) {
 	dsn := fmt.Sprintf("%s:%s@(%s:3306)/information_schema", user, password, host)
 	db, err := sql.Open("mysql", dsn)
 
@@ -183,9 +173,9 @@ func getMysqlProcesses(host, user, password string) ([]mysqlProcess, error) {
 		return nil, err
 	}
 
-	mysqlProcesses := make([]mysqlProcess, 0)
+	mysqlProcesses := make([]*types.MysqlProcess, 0)
 	for results.Next() {
-		var mysqlProcess mysqlProcess
+		var mysqlProcess types.MysqlProcess
 		var host string
 
 		err = results.Scan(&mysqlProcess.ID, &mysqlProcess.User, &host, &mysqlProcess.DB, &mysqlProcess.Command,
@@ -207,7 +197,7 @@ func getMysqlProcesses(host, user, password string) ([]mysqlProcess, error) {
 		}
 		mysqlProcess.Host = s[0]
 		mysqlProcess.Port = uint32(parsedPort)
-		mysqlProcesses = append(mysqlProcesses, mysqlProcess)
+		mysqlProcesses = append(mysqlProcesses, &mysqlProcess)
 	}
 
 	return mysqlProcesses, nil

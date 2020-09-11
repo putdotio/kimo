@@ -11,14 +11,9 @@ import (
 	"time"
 )
 
-type TcpProxyRecord struct {
-	ProxyInput   types.Addr
-	ProxyOutput  types.Addr
-	MysqlInput   types.Addr
-	ClientOutput types.Addr
-}
 
-func GetResponseFromTcpProxy() ([]TcpProxyRecord, error) {
+
+func GetResponseFromTcpProxy() ([]types.TcpProxyRecord, error) {
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
 	// todo: tcpproxy url as config
 	url := fmt.Sprintf("http://tcpproxy:3307/conns")
@@ -43,7 +38,7 @@ func GetResponseFromTcpProxy() ([]TcpProxyRecord, error) {
 
 	records := strings.Split(string(contents), "\n")
 
-	addresses := make([]TcpProxyRecord, 0)
+	addresses := make([]types.TcpProxyRecord, 0)
 	for _, record := range records {
 		fmt.Println("record: ", record)
 		addr, err := parseTcpProxyRecord(record)
@@ -60,13 +55,13 @@ func GetResponseFromTcpProxy() ([]TcpProxyRecord, error) {
 	return addresses, nil
 }
 
-func parseTcpProxyRecord(record string) (*TcpProxyRecord, error) {
+func parseTcpProxyRecord(record string) (*types.TcpProxyRecord, error) {
 	// Sample Output:
 	// 10.0.4.219:36149 -> 10.0.0.68:3306 -> 10.0.0.68:35423 -> 10.0.0.241:3306
 	// <client>:<output_port> -> <proxy>:<input_port> -> <proxy>:<output_port>: -> <mysql>:<input_port>
 	record = strings.TrimSpace(record)
 	items := strings.Split(record, "->")
-	var tcpAddr TcpProxyRecord
+	var tcpAddr types.TcpProxyRecord
 	for idx, item := range items {
 		hostURL := strings.TrimSpace(item)
 		parts := strings.Split(hostURL, ":")
