@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"kimo/config"
 	"kimo/types"
 	"net/http"
 	"os"
@@ -134,9 +135,9 @@ func findProcess(pid int32, processes []*gopsutilProcess.Process) *gopsutilProce
 
 }
 
-func Run() error {
+func Run(config *config.Config) error {
 	http.HandleFunc("/conns", conns)
-	err := http.ListenAndServe("0.0.0.0:8090", nil)
+	err := http.ListenAndServe(config.Server.ListenAddress, nil)
 	if err != nil {
 		return err
 		// todo: handle error

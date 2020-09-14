@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"kimo/config"
 	"kimo/mysql"
 	"kimo/tcpproxy"
 	"kimo/types"
@@ -13,9 +14,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func Run(host, user, password string) error {
+func Run(cfg *config.Config) error {
 	// get mysql info
-	mysqlProcesses, err := mysql.GetProcesses(host, user, password)
+	mysqlProcesses, err := mysql.GetProcesses(cfg)
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func getResponseFromServer(host string, port uint32) (*types.ServerProcess, erro
 	// todo: server port as config or cli argument
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
 	// todo: http or https
-	url := fmt.Sprintf("http://%s:8090/conns?ports=%d", host, port)
+	url := fmt.Sprintf("http://%s:3333/conns?ports=%d", host, port)
 	// todo: use request with context
 	// todo: timeout
 	fmt.Println("Requesting to ", url)

@@ -3,15 +3,15 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
+	"kimo/config"
 	"kimo/types"
 	"log"
 	"strconv"
 	"strings"
 )
 
-func GetProcesses(host, user, password string) ([]*types.MysqlProcess, error) {
-	dsn := fmt.Sprintf("%s:%s@(%s:3306)/information_schema", user, password, host)
-	db, err := sql.Open("mysql", dsn)
+func GetProcesses(cfg *config.Config) ([]*types.MysqlProcess, error) {
+	db, err := sql.Open("mysql", cfg.Client.DSN)
 
 	if err != nil {
 		return nil, err

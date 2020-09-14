@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"kimo/client"
+	"kimo/config"
 	"kimo/server"
 	"os"
 
@@ -11,12 +12,43 @@ import (
 
 func main() {
 	app := cli.NewApp()
+	var cfg = config.NewConfig()
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:   "config, c",
+			Value:  "/etc/kimo.toml",
+			Usage:  "configuration file path",
+			EnvVar: "KIMO_CONFIG",
+		},
+		cli.BoolFlag{
+			Name:  "debug, d",
+			Usage: "enable debug log",
+		},
+		cli.BoolFlag{
+			Name:  "no-debug, D",
+			Usage: "disable debug log",
+		},
+	}
+	app.Before = func(c *cli.Context) error {
+		err := cfg.ReadFile(c.GlobalString("config"))
+		if err != nil {
+			// TODO: make this debug log
+			fmt.Println("Cannot read config:", err)
+		}
+		if c.IsSet("debug") {
+			cfg.Debug = true
+		}
+		if c.IsSet("no-debug") {
+			cfg.Debug = false
+		}
+		return nil
+	}
 	app.Commands = []cli.Command{
 		{
 			Name:  "server",
 			Usage: "run server",
 			Action: func(c *cli.Context) error {
-				err := server.Run()
+				err := server.Run(cfg)
 				if err != nil {
 					return err
 				}
@@ -41,10 +73,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				host := c.String("host")
-				user := c.String("user")
-				password := c.String("password")
-				err := client.Run(host, user, password)
+				err := client.Run(cfg)
 				if err != nil {
 					return err
 				}

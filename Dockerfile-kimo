@@ -5,3 +5,6 @@ RUN apt-get update && apt-get -y install default-mysql-client
 RUN mkdir /go/src/kimo
 COPY . /go/src/kimo
 RUN cd /go/src/kimo && go mod vendor && go build
+
+
+ADD config.toml /etc/kimo.toml
