@@ -18,7 +18,7 @@ type Mysql struct {
 	DSN string
 }
 
-func (m *Mysql) GetProcesses(dsn string) ([]*types.MysqlProcess, error) {
+func (m *Mysql) GetProcesses() ([]*types.MysqlProcess, error) {
 	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {

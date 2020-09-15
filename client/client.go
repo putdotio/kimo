@@ -33,7 +33,7 @@ type Client struct {
 
 func (c *Client) Run() error {
 	// todo: use context
-	mysqlProcesses, err := c.Mysql.GetProcesses(c.Config.DSN)
+	mysqlProcesses, err := c.Mysql.GetProcesses()
 	if err != nil {
 		return err
 	}
