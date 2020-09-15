@@ -13,14 +13,13 @@ type Addr struct {
 }
 
 type ServerProcess struct {
-	Laddr      gopsutilNet.Addr `json:"localaddr"`
-	Status     string           `json:"status"`
-	Pid        int32            `json:"pid"`
-	Name       string           `json:"name"`
-	TcpProxies []Addr           `json:"tcpproxies"`
-	Hostname   string           `json:"hostname"`
-	CmdLine    string           `json:"cmdline"`
-	Type       string           `json:"type"` // whether tcpproxy or kimo-server process. todo: should be simple & clean.
+	Laddr    gopsutilNet.Addr `json:"localaddr"`
+	Status   string           `json:"status"`
+	Pid      int32            `json:"pid"`
+	Name     string           `json:"name"`
+	Hostname string           `json:"hostname"`
+	CmdLine  string           `json:"cmdline"`
+	Type     string           `json:"type"` // whether tcpproxy or kimo-server process. todo: should be simple & clean.
 }
 
 type MysqlProcess struct {

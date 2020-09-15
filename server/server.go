@@ -68,6 +68,8 @@ func (s *Server) isRequestedPort(localPort uint32, requestedPorts []uint32) bool
 }
 
 func (s *Server) conns(w http.ResponseWriter, req *http.Request) {
+	// todo: cache result for a short period (10s? 30s?)
+	// todo: should server return real host ip & address if server is tcp proxy?
 	ports := s.parsePorts(w, req)
 	if ports == nil {
 		http.Error(w, "ports param is required", http.StatusBadRequest)

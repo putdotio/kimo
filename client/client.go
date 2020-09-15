@@ -22,8 +22,9 @@ func NewClient(cfg *config.Client) *Client {
 }
 
 type Client struct {
-	Config   *config.Client
-	TcpProxy *tcpproxy.TcpProxy
+	Config          *config.Client
+	TcpProxy        *tcpproxy.TcpProxy
+	TcpProxyRecords []types.TcpProxyRecord
 }
 
 func (c *Client) Run() error {
@@ -33,62 +34,33 @@ func (c *Client) Run() error {
 		return err
 	}
 
+	// todo: should be run in parallel.
+	proxyRecords, err := c.TcpProxy.GetRecords()
+	if err != nil {
+		// todo: handle error
+	}
+	c.TcpProxyRecords = proxyRecords
+	fmt.Printf("Proxy addresses: %+v\n", c.TcpProxyRecords)
+
 	kimoProcesses := make([]*types.KimoProcess, 0)
 	// get server info
 	for _, mp := range mysqlProcesses {
 		var kp types.KimoProcess
+		kp.MysqlProcess = mp
 		// todo: debug log
 		fmt.Printf("%+v\n", mp)
-		sp, err := c.GetServerProcesses(mp.Host, mp.Port)
+		// todo: use goroutine
+		sp, err := c.GetServerProcess(&kp, mp.Host, mp.Port)
 		if err != nil {
+			// todo: store errors inside KimoProcess
 			fmt.Println(err.Error())
 			continue
 		}
-		// todo: find a better way.
-		if sp.Type == "tcpproxy" {
-			kp.TcpProxyProcess = sp
-		} else {
-			kp.ServerProcess = sp
-		}
-		kp.MysqlProcess = mp
+		fmt.Printf("Settin sp: %+v\n", sp)
+		kp.ServerProcess = sp
 		kimoProcesses = append(kimoProcesses, &kp)
 	}
 
-	// todo: should be run in parallel.
-	proxyAddresses, err := c.TcpProxy.GetAddresses()
-	if err != nil {
-		// todo: handle error
-	}
-	fmt.Printf("Proxy addresses: %+v\n", proxyAddresses)
-
-	fmt.Printf("Getting real host ips for %d processes...\n", len(kimoProcesses))
-	// todo: this should be recursive
-	// set real host ip & address
-	for _, kp := range kimoProcesses {
-		fmt.Printf("KimoProcess: %+v\n", kp)
-		if kp.TcpProxyProcess != nil {
-			pr, nil := c.TcpProxy.GetProxyRecord(*kp.TcpProxyProcess, proxyAddresses)
-			if err != nil {
-				fmt.Println(err.Error())
-				continue
-			}
-			kp.TcpProxyRecord = pr
-		}
-	}
-
-	// todo: DRY.
-	// todo: we should find the real process recursive.
-	for _, kp := range kimoProcesses {
-		// todo: debug log
-		sp, err := c.GetServerProcesses(kp.TcpProxyRecord.ClientOutput.IP, kp.TcpProxyRecord.ClientOutput.Port)
-
-		if err != nil {
-			fmt.Println(err.Error())
-			continue
-		}
-		kp.ServerProcess = sp
-
-	}
 	for _, kp := range kimoProcesses {
 		fmt.Printf("final kp: %+v\n", kp)
 		fmt.Printf("final sp: %+v\n", kp.ServerProcess)
@@ -100,11 +72,12 @@ func (c *Client) Run() error {
 	return nil
 }
 
-func (c *Client) GetServerProcesses(host string, port uint32) (*types.ServerProcess, error) {
+func (c *Client) GetServerProcess(kp *types.KimoProcess, host string, port uint32) (*types.ServerProcess, error) {
 	// todo: host validation
 	// todo: server port as config or cli argument
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
 	// todo: http or https
+	// todo: use port from config
 	url := fmt.Sprintf("http://%s:3333/conns?ports=%d", host, port)
 	// todo: use request with context
 	// todo: timeout
@@ -128,17 +101,24 @@ func (c *Client) GetServerProcesses(host string, port uint32) (*types.ServerProc
 		return nil, err
 	}
 
-	for _, sp := range ksr.ServerProcesses {
-		if sp.Laddr.Port == port {
-			sp.Hostname = ksr.Hostname
-			if sp.Name == "tcpproxy" {
-				sp.Type = "tcpproxy"
-			} else {
-				sp.Type = "kimo-server"
-			}
-			return &sp, nil
-		}
+	// todo: do not return list from server
+	sp := ksr.ServerProcesses[0]
+	sp.Hostname = ksr.Hostname
+
+	if sp.Laddr.Port != port {
+		return nil, errors.New("could not found")
 	}
 
-	return nil, errors.New("could not found")
+	if sp.Name != "tcpproxy" {
+		return &sp, nil
+	}
+
+	kp.TcpProxyProcess = &sp
+	pr, err := c.TcpProxy.GetProxyRecord(*kp.TcpProxyProcess, c.TcpProxyRecords)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	kp.TcpProxyRecord = pr
+	return c.GetServerProcess(kp, pr.ClientOutput.IP, kp.TcpProxyRecord.ClientOutput.Port)
 }

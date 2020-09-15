@@ -24,7 +24,7 @@ func NewTcpProxy(cfg *config.Client) *TcpProxy {
 	return t
 }
 
-func (t *TcpProxy) GetAddresses() ([]types.TcpProxyRecord, error) {
+func (t *TcpProxy) GetRecords() ([]types.TcpProxyRecord, error) {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
 	fmt.Println("Requesting to tcpproxy ", url)
 	response, err := t.HttpClient.Get(url)
@@ -45,10 +45,10 @@ func (t *TcpProxy) GetAddresses() ([]types.TcpProxyRecord, error) {
 		return nil, err
 	}
 
-	records := strings.Split(string(contents), "\n")
+	parsedContents := strings.Split(string(contents), "\n")
 
-	addresses := make([]types.TcpProxyRecord, 0)
-	for _, record := range records {
+	records := make([]types.TcpProxyRecord, 0)
+	for _, record := range parsedContents {
 		fmt.Println("record: ", record)
 		addr, err := t.parseRecord(record)
 		if err != nil {
@@ -59,9 +59,9 @@ func (t *TcpProxy) GetAddresses() ([]types.TcpProxyRecord, error) {
 			// todo: debug log
 			continue
 		}
-		addresses = append(addresses, *addr)
+		records = append(records, *addr)
 	}
-	return addresses, nil
+	return records, nil
 }
 
 func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
