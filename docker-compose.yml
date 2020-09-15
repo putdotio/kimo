@@ -31,12 +31,11 @@ services:
     tty: true
   kimo-server:
     image: kimo-server
-    container_name: kimo-server
     build:
       dockerfile: Dockerfile-kimo-server
       context: .
     ports:
-      - "3333:3333"
+      - "3333"
     depends_on:
       - kimo
     tty: true
