@@ -28,19 +28,16 @@ type Client struct {
 	Config          *config.Client
 	Mysql           *mysql.Mysql
 	TcpProxy        *tcpproxy.TcpProxy
-	TcpProxyRecords []types.TcpProxyRecord
-	MysqlProcesses  []types.MysqlProcess
 	KimoProcessChan chan types.KimoProcess
 }
 
 func (c *Client) getMysqlProcesses(wg *sync.WaitGroup) error {
 	defer wg.Done()
 	// todo: use context
-	mps, err := c.Mysql.GetProcesses()
+	err := c.Mysql.GetProcesses()
 	if err != nil {
 		return err
 	}
-	c.MysqlProcesses = mps
 	return nil
 }
 
@@ -48,11 +45,10 @@ func (c *Client) getTcpProxyRecords(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	// todo: use context
-	ps, err := c.TcpProxy.GetRecords()
+	err := c.TcpProxy.GetRecords()
 	if err != nil {
 		return err
 	}
-	c.TcpProxyRecords = ps
 	return nil
 }
 func (c *Client) Run() error {
@@ -67,7 +63,7 @@ func (c *Client) Run() error {
 	wg.Wait()
 
 	// get server info
-	for _, mp := range c.MysqlProcesses {
+	for _, mp := range c.Mysql.Processes {
 		fmt.Printf("mp: %+v\n", mp)
 		var kp types.KimoProcess
 		kp.MysqlProcess = &mp
@@ -89,13 +85,9 @@ func (c *Client) Run() error {
 
 func (c *Client) GetServerProcess(kp *types.KimoProcess, host string, port uint32) error {
 	// todo: host validation
-	// todo: server port as config or cli argument
-	var httpClient = &http.Client{Timeout: 2 * time.Second}
-	// todo: http or https
-	// todo: use port from config
-	url := fmt.Sprintf("http://%s:3333/conns?ports=%d", host, port)
 	// todo: use request with context
-	// todo: timeout
+	var httpClient = &http.Client{Timeout: 2 * time.Second}
+	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, c.Config.ServerPort, port)
 	fmt.Println("Requesting to ", url)
 	response, err := httpClient.Get(url)
 	if err != nil {
@@ -110,7 +102,6 @@ func (c *Client) GetServerProcess(kp *types.KimoProcess, host string, port uint3
 
 	ksr := types.KimoServerResponse{}
 	err = json.NewDecoder(response.Body).Decode(&ksr)
-	// todo: handle tcpproxy
 	if err != nil {
 		fmt.Println(err.Error())
 		return err
@@ -131,7 +122,7 @@ func (c *Client) GetServerProcess(kp *types.KimoProcess, host string, port uint3
 	}
 
 	kp.TcpProxyProcess = &sp
-	pr, err := c.TcpProxy.GetProxyRecord(*kp.TcpProxyProcess, c.TcpProxyRecords)
+	pr, err := c.TcpProxy.GetProxyRecord(*kp.TcpProxyProcess, c.TcpProxy.Records)
 	if err != nil {
 		fmt.Println(err.Error())
 		c.KimoProcessChan <- *kp

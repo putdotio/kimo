@@ -15,22 +15,22 @@ func NewMysql(dsn string) *Mysql {
 }
 
 type Mysql struct {
-	DSN string
+	DSN       string
+	Processes []types.MysqlProcess
 }
 
-func (m *Mysql) GetProcesses() ([]types.MysqlProcess, error) {
+func (m *Mysql) GetProcesses() error {
 	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer db.Close()
 
 	results, err := db.Query("select * from PROCESSLIST")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	mps := make([]types.MysqlProcess, 0)
 	for results.Next() {
 		var mp types.MysqlProcess
 		var host string
@@ -38,7 +38,7 @@ func (m *Mysql) GetProcesses() ([]types.MysqlProcess, error) {
 		err = results.Scan(&mp.ID, &mp.User, &host, &mp.DB, &mp.Command, &mp.Time, &mp.State, &mp.Info)
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 		s := strings.Split(host, ":")
 		if len(s) < 2 {
@@ -52,7 +52,7 @@ func (m *Mysql) GetProcesses() ([]types.MysqlProcess, error) {
 		}
 		mp.Host = s[0]
 		mp.Port = uint32(parsedPort)
-		mps = append(mps, mp)
+		m.Processes = append(m.Processes, mp)
 	}
-	return mps, nil
+	return nil
 }

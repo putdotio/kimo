@@ -15,6 +15,7 @@ import (
 type TcpProxy struct {
 	MgmtAddress string
 	HttpClient  *http.Client
+	Records     []types.TcpProxyRecord
 }
 
 func NewTcpProxy(cfg *config.Client) *TcpProxy {
@@ -24,40 +25,39 @@ func NewTcpProxy(cfg *config.Client) *TcpProxy {
 	return t
 }
 
-func (t *TcpProxy) GetRecords() ([]types.TcpProxyRecord, error) {
+func (t *TcpProxy) GetRecords() error {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
 	fmt.Println("Requesting to tcpproxy ", url)
 	response, err := t.HttpClient.Get(url)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		fmt.Printf("Error: %s\n", response.Status)
 		// todo: return appropriate error
-		return nil, errors.New("status code is not 200")
+		return errors.New("status code is not 200")
 	}
 
 	// Read all the response body
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println(err.Error())
-		return nil, err
+		return err
 	}
 
 	parsedContents := strings.Split(string(contents), "\n")
 
-	records := make([]types.TcpProxyRecord, 0)
 	for _, record := range parsedContents {
 		addr, err := t.parseRecord(record)
 		if err != nil {
 			// todo: debug log
 			continue
 		}
-		records = append(records, *addr)
+		t.Records = append(t.Records, *addr)
 	}
 	fmt.Println("got all records")
-	return records, nil
+	return nil
 }
 
 func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
