@@ -9,6 +9,7 @@ import (
 	"kimo/tcpproxy"
 	"kimo/types"
 	"net/http"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -28,28 +29,49 @@ type Client struct {
 	Mysql           *mysql.Mysql
 	TcpProxy        *tcpproxy.TcpProxy
 	TcpProxyRecords []types.TcpProxyRecord
+	MysqlProcesses  []types.MysqlProcess
 	KimoProcessChan chan types.KimoProcess
 }
 
-func (c *Client) Run() error {
+func (c *Client) getMysqlProcesses(wg *sync.WaitGroup) error {
+	defer wg.Done()
 	// todo: use context
-	mysqlProcesses, err := c.Mysql.GetProcesses()
+	mps, err := c.Mysql.GetProcesses()
 	if err != nil {
 		return err
 	}
+	c.MysqlProcesses = mps
+	return nil
+}
+
+func (c *Client) getTcpProxyRecords(wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	// todo: use context
-	proxyRecords, err := c.TcpProxy.GetRecords()
+	ps, err := c.TcpProxy.GetRecords()
 	if err != nil {
-		// todo: handle error
+		return err
 	}
-	c.TcpProxyRecords = proxyRecords
+	c.TcpProxyRecords = ps
+	return nil
+}
+func (c *Client) Run() error {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go c.getMysqlProcesses(&wg)
+
+	wg.Add(1)
+	go c.getTcpProxyRecords(&wg)
+
+	wg.Wait()
+
 	// get server info
-	for _, mp := range mysqlProcesses {
+	for _, mp := range c.MysqlProcesses {
 		fmt.Printf("mp: %+v\n", mp)
 		var kp types.KimoProcess
-		kp.MysqlProcess = mp
+		kp.MysqlProcess = &mp
 		// todo: debug log
-		// todo: use wait group
 		go c.GetServerProcess(&kp, mp.Host, mp.Port)
 	}
 	<-c.KimoProcessChan

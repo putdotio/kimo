@@ -18,7 +18,7 @@ type Mysql struct {
 	DSN string
 }
 
-func (m *Mysql) GetProcesses() ([]*types.MysqlProcess, error) {
+func (m *Mysql) GetProcesses() ([]types.MysqlProcess, error) {
 	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {
@@ -30,7 +30,7 @@ func (m *Mysql) GetProcesses() ([]*types.MysqlProcess, error) {
 	if err != nil {
 		return nil, err
 	}
-	mps := make([]*types.MysqlProcess, 0)
+	mps := make([]types.MysqlProcess, 0)
 	for results.Next() {
 		var mp types.MysqlProcess
 		var host string
@@ -52,7 +52,7 @@ func (m *Mysql) GetProcesses() ([]*types.MysqlProcess, error) {
 		}
 		mp.Host = s[0]
 		mp.Port = uint32(parsedPort)
-		mps = append(mps, &mp)
+		mps = append(mps, mp)
 	}
 	return mps, nil
 }
