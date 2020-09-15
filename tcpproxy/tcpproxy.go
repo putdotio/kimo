@@ -49,18 +49,14 @@ func (t *TcpProxy) GetRecords() ([]types.TcpProxyRecord, error) {
 
 	records := make([]types.TcpProxyRecord, 0)
 	for _, record := range parsedContents {
-		fmt.Println("record: ", record)
 		addr, err := t.parseRecord(record)
 		if err != nil {
 			// todo: debug log
 			continue
 		}
-		if addr == nil {
-			// todo: debug log
-			continue
-		}
 		records = append(records, *addr)
 	}
+	fmt.Println("got all records")
 	return records, nil
 }
 
@@ -76,7 +72,8 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 		parts := strings.Split(hostURL, ":")
 		// todo: we should not need this. handle.
 		if len(parts) < 2 {
-			return nil, nil
+			// todo: define proper error
+			return nil, errors.New("unknown")
 		}
 		port, err := strconv.ParseInt(parts[1], 10, 32)
 
@@ -97,6 +94,8 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 		} else if idx == 3 {
 			tcpAddr.MysqlInput.IP = parts[0]
 			tcpAddr.MysqlInput.Port = uint32(port)
+		} else {
+			return nil, errors.New("unknown")
 		}
 	}
 
@@ -104,16 +103,10 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 }
 
 func (t *TcpProxy) GetProxyRecord(serverProcess types.ServerProcess, proxyRecords []types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
-	fmt.Printf("looking for: %+v\n", serverProcess)
 	for _, pr := range proxyRecords {
-		fmt.Printf("proxyRecord: %+v\n", pr)
 		if pr.ProxyOutput.IP == serverProcess.Laddr.IP && pr.ProxyOutput.Port == serverProcess.Laddr.Port {
-			fmt.Println("found!")
 			return &pr, nil
 		}
 	}
-	fmt.Println("Could not found!")
-
 	return nil, errors.New("could not found")
-
 }

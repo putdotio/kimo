@@ -2,15 +2,24 @@ package mysql
 
 import (
 	"database/sql"
-	"fmt"
 	"kimo/types"
 	"log"
 	"strconv"
 	"strings"
 )
 
-func GetProcesses(dsn string) ([]*types.MysqlProcess, error) {
-	db, err := sql.Open("mysql", dsn)
+func NewMysql(dsn string) *Mysql {
+	m := new(Mysql)
+	m.DSN = dsn
+	return m
+}
+
+type Mysql struct {
+	DSN string
+}
+
+func (m *Mysql) GetProcesses(dsn string) ([]*types.MysqlProcess, error) {
+	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {
 		return nil, err
@@ -21,19 +30,16 @@ func GetProcesses(dsn string) ([]*types.MysqlProcess, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	mysqlProcesses := make([]*types.MysqlProcess, 0)
+	mps := make([]*types.MysqlProcess, 0)
 	for results.Next() {
-		var mysqlProcess types.MysqlProcess
+		var mp types.MysqlProcess
 		var host string
 
-		err = results.Scan(&mysqlProcess.ID, &mysqlProcess.User, &host, &mysqlProcess.DB, &mysqlProcess.Command,
-			&mysqlProcess.Time, &mysqlProcess.State, &mysqlProcess.Info)
+		err = results.Scan(&mp.ID, &mp.User, &host, &mp.DB, &mp.Command, &mp.Time, &mp.State, &mp.Info)
 
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("host: ", host)
 		s := strings.Split(host, ":")
 		if len(s) < 2 {
 			// it might be localhost
@@ -44,10 +50,9 @@ func GetProcesses(dsn string) ([]*types.MysqlProcess, error) {
 			log.Printf("error during string to int32: %s\n", err)
 			continue
 		}
-		mysqlProcess.Host = s[0]
-		mysqlProcess.Port = uint32(parsedPort)
-		mysqlProcesses = append(mysqlProcesses, &mysqlProcess)
+		mp.Host = s[0]
+		mp.Port = uint32(parsedPort)
+		mps = append(mps, &mp)
 	}
-
-	return mysqlProcesses, nil
+	return mps, nil
 }
