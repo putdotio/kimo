@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"kimo/config"
 	"kimo/types"
 	"net/http"
 	"strconv"
@@ -18,9 +17,9 @@ type TcpProxy struct {
 	Records     []types.TcpProxyRecord
 }
 
-func NewTcpProxy(cfg *config.Client) *TcpProxy {
+func NewTcpProxy(mgmtAddress string) *TcpProxy {
 	t := new(TcpProxy)
-	t.MgmtAddress = cfg.TcpProxyMgmtAddress
+	t.MgmtAddress = mgmtAddress
 	t.HttpClient = &http.Client{Timeout: 2 * time.Second}
 	return t
 }

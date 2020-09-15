@@ -19,7 +19,7 @@ func NewClient(cfg *config.Client) *Client {
 	client := new(Client)
 	client.Config = cfg
 	client.Mysql = mysql.NewMysql(cfg.DSN)
-	client.TcpProxy = tcpproxy.NewTcpProxy(cfg)
+	client.TcpProxy = tcpproxy.NewTcpProxy(cfg.TcpProxyMgmtAddress)
 	client.KimoProcessChan = make(chan types.KimoProcess)
 	return client
 }
