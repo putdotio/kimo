@@ -9,8 +9,9 @@ type Config struct {
 }
 
 type Client struct {
-	DSN        string `toml:"dsn"`
-	ServerPort uint32 `toml:"server_port"`
+	DSN                 string `toml:"dsn"`
+	ServerPort          uint32 `toml:"server_port"`
+	TcpProxyMgmtAddress string `toml:"tcpproxy_mgmt_address"`
 }
 
 type Server struct {

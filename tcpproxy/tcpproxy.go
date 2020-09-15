@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"kimo/config"
 	"kimo/types"
 	"net/http"
 	"strconv"
@@ -11,14 +12,22 @@ import (
 	"time"
 )
 
+type TcpProxy struct {
+	MgmtAddress string
+	HttpClient  *http.Client
+}
 
+func NewTcpProxy(cfg *config.Client) *TcpProxy {
+	t := new(TcpProxy)
+	t.MgmtAddress = cfg.TcpProxyMgmtAddress
+	t.HttpClient = &http.Client{Timeout: 2 * time.Second}
+	return t
+}
 
-func GetResponseFromTcpProxy() ([]types.TcpProxyRecord, error) {
-	var httpClient = &http.Client{Timeout: 2 * time.Second}
-	// todo: tcpproxy url as config
-	url := fmt.Sprintf("http://tcpproxy:3307/conns")
+func (t *TcpProxy) GetAddresses() ([]types.TcpProxyRecord, error) {
+	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
 	fmt.Println("Requesting to tcpproxy ", url)
-	response, err := httpClient.Get(url)
+	response, err := t.HttpClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +50,7 @@ func GetResponseFromTcpProxy() ([]types.TcpProxyRecord, error) {
 	addresses := make([]types.TcpProxyRecord, 0)
 	for _, record := range records {
 		fmt.Println("record: ", record)
-		addr, err := parseTcpProxyRecord(record)
+		addr, err := t.parseRecord(record)
 		if err != nil {
 			// todo: debug log
 			continue
@@ -55,7 +64,7 @@ func GetResponseFromTcpProxy() ([]types.TcpProxyRecord, error) {
 	return addresses, nil
 }
 
-func parseTcpProxyRecord(record string) (*types.TcpProxyRecord, error) {
+func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 	// Sample Output:
 	// 10.0.4.219:36149 -> 10.0.0.68:3306 -> 10.0.0.68:35423 -> 10.0.0.241:3306
 	// <client>:<output_port> -> <proxy>:<input_port> -> <proxy>:<output_port>: -> <mysql>:<input_port>

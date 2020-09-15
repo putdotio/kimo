@@ -14,9 +14,21 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func Run(cfg *config.Config) error {
+func NewClient(cfg *config.Client) *Client {
+	client := new(Client)
+	client.Config = cfg
+	client.TcpProxy = tcpproxy.NewTcpProxy(cfg)
+	return client
+}
+
+type Client struct {
+	Config   *config.Client
+	TcpProxy *tcpproxy.TcpProxy
+}
+
+func (c *Client) Run() error {
 	// get mysql info
-	mysqlProcesses, err := mysql.GetProcesses(cfg)
+	mysqlProcesses, err := mysql.GetProcesses(c.Config.DSN)
 	if err != nil {
 		return err
 	}
@@ -43,7 +55,7 @@ func Run(cfg *config.Config) error {
 	}
 
 	// todo: should be run in parallel.
-	proxyAddresses, err := tcpproxy.GetResponseFromTcpProxy()
+	proxyAddresses, err := c.TcpProxy.GetAddresses()
 	if err != nil {
 		// todo: handle error
 	}

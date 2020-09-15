@@ -24,7 +24,17 @@ import (
 //  host name
 //
 
-func parsePorts(w http.ResponseWriter, req *http.Request) []uint32 {
+func NewServer(cfg *config.Server) *Server {
+	s := new(Server)
+	s.Config = cfg
+	return s
+}
+
+type Server struct {
+	Config *config.Server
+}
+
+func (s *Server) parsePorts(w http.ResponseWriter, req *http.Request) []uint32 {
 	portsParam, ok := req.URL.Query()["ports"]
 	fmt.Printf("ports: %s\n", portsParam)
 
@@ -48,7 +58,7 @@ func parsePorts(w http.ResponseWriter, req *http.Request) []uint32 {
 	return pl
 }
 
-func isRequestedPort(localPort uint32, requestedPorts []uint32) bool {
+func (s *Server) isRequestedPort(localPort uint32, requestedPorts []uint32) bool {
 	for _, requestedPort := range requestedPorts {
 		if requestedPort == localPort {
 			return true
@@ -57,8 +67,8 @@ func isRequestedPort(localPort uint32, requestedPorts []uint32) bool {
 	return false
 }
 
-func conns(w http.ResponseWriter, req *http.Request) {
-	ports := parsePorts(w, req)
+func (s *Server) conns(w http.ResponseWriter, req *http.Request) {
+	ports := s.parsePorts(w, req)
 	if ports == nil {
 		http.Error(w, "ports param is required", http.StatusBadRequest)
 		return
@@ -81,11 +91,11 @@ func conns(w http.ResponseWriter, req *http.Request) {
 	serverProcesses := make([]types.ServerProcess, 0)
 
 	for _, conn := range connections {
-		if !isRequestedPort(conn.Laddr.Port, ports) {
+		if !s.isRequestedPort(conn.Laddr.Port, ports) {
 			continue
 		}
 
-		process := findProcess(conn.Pid, processes)
+		process := s.findProcess(conn.Pid, processes)
 		if err != nil {
 			// todo: handle
 			continue
@@ -125,7 +135,7 @@ func conns(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func findProcess(pid int32, processes []*gopsutilProcess.Process) *gopsutilProcess.Process {
+func (s *Server) findProcess(pid int32, processes []*gopsutilProcess.Process) *gopsutilProcess.Process {
 	for _, process := range processes {
 		if process.Pid == pid {
 			return process
@@ -135,9 +145,9 @@ func findProcess(pid int32, processes []*gopsutilProcess.Process) *gopsutilProce
 
 }
 
-func Run(config *config.Config) error {
-	http.HandleFunc("/conns", conns)
-	err := http.ListenAndServe(config.Server.ListenAddress, nil)
+func (s *Server) Run() error {
+	http.HandleFunc("/conns", s.conns)
+	err := http.ListenAndServe(s.Config.ListenAddress, nil)
 	if err != nil {
 		return err
 		// todo: handle error
