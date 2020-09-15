@@ -39,7 +39,7 @@ func (c *Client) Run() error {
 		var kp types.KimoProcess
 		// todo: debug log
 		fmt.Printf("%+v\n", mp)
-		sp, err := getResponseFromServer(mp.Host, mp.Port)
+		sp, err := c.GetServerProcesses(mp.Host, mp.Port)
 		if err != nil {
 			fmt.Println(err.Error())
 			continue
@@ -67,7 +67,7 @@ func (c *Client) Run() error {
 	for _, kp := range kimoProcesses {
 		fmt.Printf("KimoProcess: %+v\n", kp)
 		if kp.TcpProxyProcess != nil {
-			pr, nil := getProxyRecord(*kp.TcpProxyProcess, proxyAddresses)
+			pr, nil := c.TcpProxy.GetProxyRecord(*kp.TcpProxyProcess, proxyAddresses)
 			if err != nil {
 				fmt.Println(err.Error())
 				continue
@@ -80,7 +80,7 @@ func (c *Client) Run() error {
 	// todo: we should find the real process recursive.
 	for _, kp := range kimoProcesses {
 		// todo: debug log
-		sp, err := getResponseFromServer(kp.TcpProxyRecord.ClientOutput.IP, kp.TcpProxyRecord.ClientOutput.Port)
+		sp, err := c.GetServerProcesses(kp.TcpProxyRecord.ClientOutput.IP, kp.TcpProxyRecord.ClientOutput.Port)
 
 		if err != nil {
 			fmt.Println(err.Error())
@@ -100,23 +100,7 @@ func (c *Client) Run() error {
 	return nil
 }
 
-func getProxyRecord(kimoProcess types.ServerProcess, proxyRecords []types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
-	fmt.Printf("looking for: %+v\n", kimoProcess)
-	for _, pr := range proxyRecords {
-		fmt.Printf("proxyRecord: %+v\n", pr)
-		if pr.ProxyOutput.IP == kimoProcess.Laddr.IP && pr.ProxyOutput.Port == kimoProcess.Laddr.Port {
-			fmt.Println("found!")
-			return &pr, nil
-		}
-	}
-	fmt.Println("Could not found!")
-
-	return nil, errors.New("could not found")
-
-}
-
-// todo: bad naming
-func getResponseFromServer(host string, port uint32) (*types.ServerProcess, error) {
+func (c *Client) GetServerProcesses(host string, port uint32) (*types.ServerProcess, error) {
 	// todo: host validation
 	// todo: server port as config or cli argument
 	var httpClient = &http.Client{Timeout: 2 * time.Second}

@@ -102,3 +102,18 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 
 	return &tcpAddr, nil
 }
+
+func (t *TcpProxy) GetProxyRecord(kimoProcess types.ServerProcess, proxyRecords []types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
+	fmt.Printf("looking for: %+v\n", kimoProcess)
+	for _, pr := range proxyRecords {
+		fmt.Printf("proxyRecord: %+v\n", pr)
+		if pr.ProxyOutput.IP == kimoProcess.Laddr.IP && pr.ProxyOutput.Port == kimoProcess.Laddr.Port {
+			fmt.Println("found!")
+			return &pr, nil
+		}
+	}
+	fmt.Println("Could not found!")
+
+	return nil, errors.New("could not found")
+
+}
