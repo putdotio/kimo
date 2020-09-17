@@ -18,8 +18,8 @@ type DaemonProcess struct {
 	Pid      int32            `json:"pid"`
 	Name     string           `json:"name"`
 	Hostname string           `json:"hostname"`
-	CmdLine  string           `json:"cmdline"`
-	Type     string           `json:"type"` // whether tcpproxy or kimo-server process. todo: should be simple & clean.
+	CmdLine  string           `json:"cmdline"` // todo: shoudl be array of strings
+	Type     string           `json:"type"`    // whether tcpproxy or kimo-server process. todo: should be simple & clean.
 }
 
 type MysqlProcess struct {
@@ -50,4 +50,20 @@ type KimoProcess struct {
 type KimoDaemonResponse struct {
 	Hostname        string          `json:"hostname"`
 	DaemonProcesses []DaemonProcess `json:"processes"`
+}
+
+type KimoServerResponse struct {
+	ServerProcesses []ServerProcess `json:"processes"`
+}
+
+type ServerProcess struct {
+	ID        int32  `json:"id"`
+	MysqlUser string `json:"mysql_user"`
+	DB        string `json:"db"`
+	Command   string `json:"command"`
+	Time      string `json:"time"`
+	State     string `json:"state"`
+	Info      string `json:"info"`
+	CmdLine   string `json:"cmdline"`
+	Pid       int32  `json:"pid"`
 }

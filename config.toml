@@ -3,5 +3,6 @@ debug = true
 listen_address = "0.0.0.0:3333"
 [server]
 dsn = "kimo:123@(mysql:3306)/information_schema"
+listen_address = "0.0.0.0:3322"
 daemon_port = 3333
 tcpproxy_mgmt_address = "tcpproxy:3307"

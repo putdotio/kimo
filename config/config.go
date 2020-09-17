@@ -12,6 +12,7 @@ type Server struct {
 	DSN                 string `toml:"dsn"`
 	DaemonPort          uint32 `toml:"daemon_port"`
 	TcpProxyMgmtAddress string `toml:"tcpproxy_mgmt_address"`
+	ListenAddress       string `toml:"listen_address"`
 }
 
 type Daemon struct {

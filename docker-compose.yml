@@ -42,6 +42,9 @@ services:
   kimo-server:
     image: kimo-server
     container_name: kimo-server
+    entrypoint: /go/src/kimo/kimo -c /etc/kimo.toml server
+    ports:
+      - "3322:3322"
     build:
       dockerfile: Dockerfile-kimo
       context: .
