@@ -75,8 +75,6 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "ports param is required", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("ports: ", ports)
-
 	connections, err := gopsutilNet.Connections("all")
 	if err != nil {
 		fmt.Println("Error while getting connections: ", err.Error())
@@ -108,9 +106,8 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 			name = "" // todo: a const like "UNKNOWN"??
 			// todo: handle
 		}
-		cmdline, err := process.Cmdline()
+		cls, err := process.CmdlineSlice()
 		if err != nil {
-			cmdline = "" // todo: a const like "UNKNOWN"??
 			// todo: handle
 		}
 
@@ -119,7 +116,7 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 			Status:  conn.Status,
 			Pid:     conn.Pid,
 			Name:    name,
-			CmdLine: cmdline,
+			CmdLine: cls,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")

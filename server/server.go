@@ -74,8 +74,6 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 	}()
 
 	for {
-		fmt.Printf("len of serverProcesses: %d\n", len(serverProcesses))
-		fmt.Printf("len of mysqlProcesses: %d\n", len(s.Mysql.Processes))
 		if len(serverProcesses) == len(s.Mysql.Processes) {
 			break
 		}
