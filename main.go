@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"kimo/client"
 	"kimo/config"
+	"kimo/daemon"
 	"kimo/server"
 	"os"
 
@@ -45,11 +45,11 @@ func main() {
 	}
 	app.Commands = []cli.Command{
 		{
-			Name:  "server",
-			Usage: "run server",
+			Name:  "daemon",
+			Usage: "run daemon",
 			Action: func(c *cli.Context) error {
-				kimoServer := server.NewServer(&cfg.Server)
-				err := kimoServer.Run()
+				kimoDaemon := daemon.NewDaemon(&cfg.Daemon)
+				err := kimoDaemon.Run()
 				if err != nil {
 					return err
 				}
@@ -57,8 +57,8 @@ func main() {
 			},
 		},
 		{
-			Name:  "client",
-			Usage: "run client",
+			Name:  "server",
+			Usage: "run server",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "host",
@@ -74,9 +74,9 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				kimoClient := client.NewClient(&cfg.Client)
-				kimoClient.Config = &cfg.Client
-				err := kimoClient.Run()
+				kimoServer := server.NewServer(&cfg.Server)
+				kimoServer.Config = &cfg.Server
+				err := kimoServer.Run()
 				if err != nil {
 					return err
 				}

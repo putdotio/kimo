@@ -4,17 +4,17 @@ import "github.com/BurntSushi/toml"
 
 type Config struct {
 	Debug  bool `toml:"debug"`
-	Client Client
+	Daemon Daemon
 	Server Server
 }
 
-type Client struct {
+type Server struct {
 	DSN                 string `toml:"dsn"`
-	ServerPort          uint32 `toml:"server_port"`
+	DaemonPort          uint32 `toml:"daemon_port"`
 	TcpProxyMgmtAddress string `toml:"tcpproxy_mgmt_address"`
 }
 
-type Server struct {
+type Daemon struct {
 	ListenAddress string `toml:"listen_address"`
 }
 

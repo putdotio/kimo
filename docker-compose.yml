@@ -29,22 +29,20 @@ services:
     depends_on:
       - mysql
     tty: true
-  kimo-server:
-    image: kimo-server
+  kimo-daemon:
+    image: kimo-daemon
     build:
-      dockerfile: Dockerfile-kimo-server
+      dockerfile: Dockerfile-kimo-daemon
       context: .
     ports:
       - "3333"
     depends_on:
-      - kimo
+      - tcpproxy
     tty: true
-  kimo-client:
-    image: kimo-client
-    container_name: kimo-client
+  kimo-server:
+    image: kimo-server
+    container_name: kimo-server
     build:
       dockerfile: Dockerfile-kimo
       context: .
-    depends_on:
-      - kimo-server
     tty: true

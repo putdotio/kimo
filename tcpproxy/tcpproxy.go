@@ -101,9 +101,9 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 	return &tcpAddr, nil
 }
 
-func (t *TcpProxy) GetProxyRecord(serverProcess types.ServerProcess, proxyRecords []types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
+func (t *TcpProxy) GetProxyRecord(dp types.DaemonProcess, proxyRecords []types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
 	for _, pr := range proxyRecords {
-		if pr.ProxyOutput.IP == serverProcess.Laddr.IP && pr.ProxyOutput.Port == serverProcess.Laddr.Port {
+		if pr.ProxyOutput.IP == dp.Laddr.IP && pr.ProxyOutput.Port == dp.Laddr.Port {
 			return &pr, nil
 		}
 	}

@@ -12,7 +12,7 @@ type Addr struct {
 	Port uint32 `json:"port"`
 }
 
-type ServerProcess struct {
+type DaemonProcess struct {
 	Laddr    gopsutilNet.Addr `json:"localaddr"`
 	Status   string           `json:"status"`
 	Pid      int32            `json:"pid"`
@@ -42,12 +42,12 @@ type TcpProxyRecord struct {
 }
 
 type KimoProcess struct {
-	ServerProcess   *ServerProcess
-	TcpProxyProcess *ServerProcess
+	DaemonProcess   *DaemonProcess
+	TcpProxyProcess *DaemonProcess
 	MysqlProcess    *MysqlProcess
 	TcpProxyRecord  *TcpProxyRecord
 }
-type KimoServerResponse struct {
+type KimoDaemonResponse struct {
 	Hostname        string          `json:"hostname"`
-	ServerProcesses []ServerProcess `json:"processes"`
+	DaemonProcesses []DaemonProcess `json:"processes"`
 }

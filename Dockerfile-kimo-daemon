@@ -1,0 +1,5 @@
+FROM kimo
+ADD kimo-daemon-entrypoint.sh /tmp/
+
+ENTRYPOINT ["bash", "/tmp/kimo-daemon-entrypoint.sh"]
+EXPOSE 3303
