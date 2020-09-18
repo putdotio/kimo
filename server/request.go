@@ -17,7 +17,6 @@ func (s *Server) NewKimoRequest() *KimoRequest {
 	kr.Mysql = mysql.NewMysql(s.Config.DSN)
 	kr.TcpProxy = tcpproxy.NewTcpProxy(s.Config.TcpProxyMgmtAddress)
 	kr.DaemonPort = s.Config.DaemonPort
-	kr.ErrChan = make(chan error)
 	return kr
 }
 
@@ -25,43 +24,49 @@ type KimoRequest struct {
 	Mysql      *mysql.Mysql
 	TcpProxy   *tcpproxy.TcpProxy
 	DaemonPort uint32
-	ErrChan    chan error
 }
 
 func (kr *KimoRequest) Setup(ctx context.Context) error {
-	var wg sync.WaitGroup
+	errChan := make(chan error)
+	doneChan := make(chan bool)
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		err := kr.Mysql.GetProcesses(ctx)
 		if err != nil {
 			log.Errorln(err.Error())
-			kr.ErrChan <- err
+
+			errChan <- err
 			return
 		}
+		doneChan <- true
 	}()
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		err := kr.TcpProxy.GetRecords(ctx)
 		if err != nil {
 			log.Errorln(err.Error())
-			kr.ErrChan <- err
+			errChan <- err
 			return
 		}
+		doneChan <- true
 	}()
 
-	wg.Wait()
-	close(kr.ErrChan)
-
-	select {
-	case err := <-kr.ErrChan:
-		return err
-	default:
+	doneCount := 0
+	for {
+		select {
+		case err := <-errChan:
+			return err
+		case <-doneChan:
+			doneCount++
+			// todo: length should not be constant
+			if doneCount == 2 { // get mysql processes + get tcpproxy records
+				close(errChan)
+				close(doneChan)
+				return nil
+			}
+		default:
+		}
 	}
-	return nil
 }
 
 func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) []*KimoProcess {
