@@ -8,62 +8,63 @@ import (
 	"kimo/types"
 	"net/http"
 	"sync"
-	"time"
+
+	"github.com/cenkalti/log"
 )
 
-func (s *Server) NewKimoRequest(ctx context.Context) *KimoRequest {
+func (s *Server) NewKimoRequest() *KimoRequest {
 	kr := new(KimoRequest)
 	kr.Mysql = mysql.NewMysql(s.Config.DSN)
 	kr.TcpProxy = tcpproxy.NewTcpProxy(s.Config.TcpProxyMgmtAddress)
 	kr.DaemonPort = s.Config.DaemonPort
-	ctx, cancel := context.WithTimeout(ctx, time.Second*2)
-	kr.Context = ctx
-	kr.ContextCancel = cancel
+	kr.ErrChan = make(chan error)
 	return kr
 }
 
 type KimoRequest struct {
-	Mysql         *mysql.Mysql
-	TcpProxy      *tcpproxy.TcpProxy
-	Context       context.Context
-	DaemonPort    uint32
-	ContextCancel context.CancelFunc
+	Mysql      *mysql.Mysql
+	TcpProxy   *tcpproxy.TcpProxy
+	DaemonPort uint32
+	ErrChan    chan error
 }
 
-func (kr *KimoRequest) getMysqlProcesses(wg *sync.WaitGroup) error {
-	defer wg.Done()
-	// todo: use context
-	err := kr.Mysql.GetProcesses()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (kr *KimoRequest) getTcpProxyRecords(wg *sync.WaitGroup) error {
-	defer wg.Done()
-
-	// todo: use context
-	err := kr.TcpProxy.GetRecords()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (kr *KimoRequest) Setup() {
+func (kr *KimoRequest) Setup(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-	go kr.getMysqlProcesses(&wg)
+	go func() {
+		defer wg.Done()
+		err := kr.Mysql.GetProcesses(ctx)
+		if err != nil {
+			log.Errorln(err.Error())
+			kr.ErrChan <- err
+			return
+		}
+	}()
 
 	wg.Add(1)
-	go kr.getTcpProxyRecords(&wg)
+	go func() {
+		defer wg.Done()
+		err := kr.TcpProxy.GetRecords(ctx)
+		if err != nil {
+			log.Errorln(err.Error())
+			kr.ErrChan <- err
+			return
+		}
+	}()
 
 	wg.Wait()
+	close(kr.ErrChan)
+
+	select {
+	case err := <-kr.ErrChan:
+		return err
+	default:
+	}
+	return nil
 }
 
-func (kr *KimoRequest) GenerateKimoProcesses() []*KimoProcess {
+func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) []*KimoProcess {
 	kpChan := make(chan KimoProcess)
 
 	// get server info
@@ -90,14 +91,14 @@ readChannel:
 				break readChannel
 			}
 			kps = append(kps, &kp)
-		case <-kr.Context.Done():
+		case <-ctx.Done():
 			break readChannel
 		}
 	}
 	return kps
 }
 
-func (kr *KimoRequest) ReturnResponse(w http.ResponseWriter, kps []*KimoProcess) {
+func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter, kps []*KimoProcess) {
 	serverProcesses := make([]types.ServerProcess, 0)
 	for _, kp := range kps {
 		serverProcesses = append(serverProcesses, types.ServerProcess{

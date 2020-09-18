@@ -4,6 +4,7 @@ import (
 	"context"
 	"kimo/config"
 	"net/http"
+	"time"
 
 	"github.com/cenkalti/log"
 	_ "github.com/go-sql-driver/mysql"
@@ -21,15 +22,21 @@ type Server struct {
 
 func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 	// todo: error handling
-	// todo: context
-	ctx := context.Background()
-	kr := s.NewKimoRequest(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	kr := s.NewKimoRequest()
 	log.Infoln("Setup...")
-	kr.Setup()
+	err := kr.Setup(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	log.Infoln("Generating kimo processes...")
-	kps := kr.GenerateKimoProcesses()
+	kps := kr.GenerateKimoProcesses(ctx)
 	log.Infoln("Returning response...")
-	kr.ReturnResponse(w, kps)
+	kr.ReturnResponse(ctx, w, kps)
 
 }
 

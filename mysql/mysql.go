@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"kimo/types"
 	"log"
@@ -19,7 +20,7 @@ type Mysql struct {
 	Processes []types.MysqlProcess
 }
 
-func (m *Mysql) GetProcesses() error {
+func (m *Mysql) GetProcesses(ctx context.Context) error {
 	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {
