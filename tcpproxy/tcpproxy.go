@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"kimo/types"
+
+	"github.com/cenkalti/log"
 )
 
 type TcpProxy struct {
@@ -27,14 +29,14 @@ func NewTcpProxy(mgmtAddress string) *TcpProxy {
 
 func (t *TcpProxy) GetRecords() error {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
-	fmt.Println("Requesting to tcpproxy ", url)
+	log.Debugf("Requesting to tcpproxy %s\n", url)
 	response, err := t.HttpClient.Get(url)
 	if err != nil {
 		return err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		fmt.Printf("Error: %s\n", response.Status)
+		log.Errorf("Error: %s\n", response.Status)
 		// todo: return appropriate error
 		return errors.New("status code is not 200")
 	}
@@ -42,7 +44,7 @@ func (t *TcpProxy) GetRecords() error {
 	// Read all the response body
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Errorln(err.Error())
 		return err
 	}
 
@@ -57,7 +59,7 @@ func (t *TcpProxy) GetRecords() error {
 		}
 		t.Records = append(t.Records, *addr)
 	}
-	fmt.Println("got all records")
+	log.Infoln("got all records")
 	return nil
 }
 
@@ -79,7 +81,7 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 		port, err := strconv.ParseInt(parts[1], 10, 32)
 
 		if err != nil {
-			fmt.Printf("error during string to int32: %s\n", err)
+			log.Errorf("error during string to int32: %s\n", err)
 			// todo: handle error and return zero value of Addr
 		}
 		// todo: DRY.

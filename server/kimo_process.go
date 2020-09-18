@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/cenkalti/log"
 )
 
 type KimoProcess struct {
@@ -35,14 +37,14 @@ func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.Daemon
 	// todo: use request with context
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
 	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, kp.Server.Config.DaemonPort, port)
-	fmt.Println("Requesting to ", url)
+	log.Debugf("Requesting to %s\n", url)
 	response, err := httpClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		fmt.Printf("Error: %s\n", response.Status)
+		log.Errorf("Error: %s\n", response.Status)
 		// todo: return appropriate error
 		return nil, errors.New("status code is not 200")
 	}
@@ -50,7 +52,7 @@ func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.Daemon
 	ksr := types.KimoDaemonResponse{}
 	err = json.NewDecoder(response.Body).Decode(&ksr)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Errorln(err.Error())
 		kp.DaemonProcess = &types.DaemonProcess{}
 		return nil, err
 	}
@@ -71,7 +73,7 @@ func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.Daemon
 	kp.TcpProxyProcess = &dp
 	pr, err := kp.Server.TcpProxy.GetProxyRecord(dp, kp.Server.TcpProxy.Records)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Errorln(err.Error())
 		return nil, err
 	}
 	kp.TcpProxyRecord = pr

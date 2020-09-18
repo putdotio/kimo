@@ -2,13 +2,13 @@ package daemon
 
 import (
 	"encoding/json"
-	"fmt"
 	"kimo/config"
 	"kimo/types"
 	"net/http"
 	"os"
 	"strconv"
 
+	"github.com/cenkalti/log"
 	gopsutilNet "github.com/shirou/gopsutil/net"
 	gopsutilProcess "github.com/shirou/gopsutil/process"
 )
@@ -36,10 +36,10 @@ type Daemon struct {
 
 func (d *Daemon) parsePorts(w http.ResponseWriter, req *http.Request) []uint32 {
 	portsParam, ok := req.URL.Query()["ports"]
-	fmt.Printf("ports: %s\n", portsParam)
+	log.Debugf("ports: %s\n", portsParam)
 
 	if !ok {
-		fmt.Println("ports param is not provided.")
+		log.Errorln("ports param is not provided.")
 		return nil
 	}
 
@@ -47,7 +47,7 @@ func (d *Daemon) parsePorts(w http.ResponseWriter, req *http.Request) []uint32 {
 	for _, port := range portsParam {
 		p, err := strconv.ParseInt(port, 10, 32)
 		if err != nil {
-			fmt.Printf("error during string to int32: %s\n", err)
+			log.Errorln("error during string to int32: %s\n", err)
 			continue
 		}
 		pl = append(pl, uint32(p))
@@ -77,14 +77,14 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 	}
 	connections, err := gopsutilNet.Connections("all")
 	if err != nil {
-		fmt.Println("Error while getting connections: ", err.Error())
+		log.Errorf("Error while getting connections: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	processes, nil := gopsutilProcess.Processes()
 	if err != nil {
-		fmt.Println("Error while getting connections: ", err.Error())
+		log.Errorf("Error while getting connections: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

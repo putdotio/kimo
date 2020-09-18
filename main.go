@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"kimo/config"
 	"kimo/daemon"
 	"kimo/server"
 	"os"
 
+	"github.com/cenkalti/log"
 	"github.com/urfave/cli"
 )
 
@@ -33,7 +33,7 @@ func main() {
 		err := cfg.ReadFile(c.GlobalString("config"))
 		if err != nil {
 			// TODO: make this debug log
-			fmt.Println("Cannot read config:", err)
+			log.Errorf("Cannot read config: %s\n", err)
 		}
 		if c.IsSet("debug") {
 			cfg.Debug = true
@@ -87,6 +87,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		fmt.Println(err)
+		log.Errorln(err)
 	}
 }

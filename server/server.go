@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/cenkalti/log"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -59,7 +60,7 @@ func (s *Server) Setup() {
 	wg.Wait()
 }
 
-func (s *Server) GetDaemonProcesses() []KimoProcess {
+func (s *Server) GenerateKimoProcesses() []KimoProcess {
 	kChan := make(chan KimoProcess)
 
 	// get server info
@@ -113,8 +114,11 @@ func (s *Server) ReturnResponse(w http.ResponseWriter, kps []KimoProcess) {
 func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 	// todo: error handling
 	// todo: debug log
+	log.Infoln("Setup...")
 	s.Setup()
-	kps := s.GetDaemonProcesses()
+	log.Infoln("Generating kimo processes...")
+	kps := s.GenerateKimoProcesses()
+	log.Infoln("Returning response...")
 	s.ReturnResponse(w, kps)
 
 }
