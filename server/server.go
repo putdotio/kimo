@@ -21,7 +21,6 @@ type Server struct {
 }
 
 func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
-	// todo: error handling
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
@@ -44,8 +43,8 @@ func (s *Server) Run() error {
 	http.HandleFunc("/procs", s.Processes)
 	err := http.ListenAndServe(s.Config.ListenAddress, nil)
 	if err != nil {
+		log.Errorln(err.Error())
 		return err
-		// todo: handle error
 	}
 	return nil
 }

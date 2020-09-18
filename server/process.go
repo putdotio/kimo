@@ -33,7 +33,6 @@ func (kp *KimoProcess) SetDaemonProcess(wg *sync.WaitGroup, kChan chan<- KimoPro
 }
 
 func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.DaemonProcess, error) {
-	// todo: host validation
 	// todo: use request with context
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
 	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, kp.KimoRequest.DaemonPort, port)
@@ -45,7 +44,6 @@ func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.Daemon
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		log.Errorf("Error: %s\n", response.Status)
-		// todo: return appropriate error
 		return nil, errors.New("status code is not 200")
 	}
 

@@ -24,7 +24,6 @@ type DaemonProcess struct {
 	Name     string           `json:"name"`
 	Hostname string           `json:"hostname"`
 	CmdLine  []string         `json:"cmdline"`
-	Type     string           `json:"type"` // whether tcpproxy or kimo-server process. todo: should be simple & clean.
 }
 
 type MysqlProcess struct {

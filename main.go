@@ -32,7 +32,6 @@ func main() {
 	app.Before = func(c *cli.Context) error {
 		err := cfg.ReadFile(c.GlobalString("config"))
 		if err != nil {
-			// TODO: make this debug log
 			log.Errorf("Cannot read config: %s\n", err)
 		}
 		if c.IsSet("debug") {

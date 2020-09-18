@@ -38,7 +38,6 @@ func (t *TcpProxy) Setup(ctx context.Context) error {
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		log.Errorf("Error: %s\n", response.Status)
-		// todo: return appropriate error
 		return errors.New("status code is not 200")
 	}
 
@@ -55,7 +54,7 @@ func (t *TcpProxy) Setup(ctx context.Context) error {
 	for _, record := range parsedContents {
 		addr, err := t.parseRecord(record)
 		if err != nil {
-			// todo: debug log
+			log.Debugf("record could not be parsed %s \n", record)
 			continue
 		}
 		t.Records = append(t.Records, *addr)
@@ -83,7 +82,7 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 
 		if err != nil {
 			log.Errorf("error during string to int32: %s\n", err)
-			// todo: handle error and return zero value of Addr
+			return nil, err
 		}
 		// todo: DRY.
 		if idx == 0 {

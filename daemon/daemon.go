@@ -97,18 +97,17 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 
 		process := d.findProcess(conn.Pid, processes)
 		if err != nil {
-			// todo: handle
+			log.Debugf("Process could not found for %d\n", conn.Pid)
 			continue
 		}
 
 		name, err := process.Name()
 		if err != nil {
-			name = "" // todo: a const like "UNKNOWN"??
-			// todo: handle
+			name = ""
 		}
 		cls, err := process.CmdlineSlice()
 		if err != nil {
-			// todo: handle
+			log.Debugf("Cmdline could not found for %d\n", process.Pid)
 		}
 
 		daemonProcesses = append(daemonProcesses, types.DaemonProcess{
@@ -123,7 +122,8 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		// todo: handle error
+		log.Errorf("Hostname could not found")
+		hostname = "UNKNOWN"
 	}
 
 	response := &types.KimoDaemonResponse{
@@ -148,8 +148,8 @@ func (d *Daemon) Run() error {
 	http.HandleFunc("/conns", d.conns)
 	err := http.ListenAndServe(d.Config.ListenAddress, nil)
 	if err != nil {
+		log.Errorln(err.Error())
 		return err
-		// todo: handle error
 	}
 	return nil
 }
