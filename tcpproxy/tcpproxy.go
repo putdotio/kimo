@@ -59,7 +59,7 @@ func (t *TcpProxy) Setup(ctx context.Context) error {
 		}
 		t.Records = append(t.Records, *addr)
 	}
-	log.Infoln("got all records")
+	log.Infof("got all (%d) records\n", len(t.Records))
 	return nil
 }
 
@@ -71,32 +71,32 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 	items := strings.Split(record, "->")
 	var tcpAddr types.TcpProxyRecord
 	for idx, item := range items {
-		hostURL := strings.TrimSpace(item)
-		parts := strings.Split(hostURL, ":")
-		// todo: we should not need this. handle.
+		parts := strings.Split(strings.TrimSpace(item), ":")
 		if len(parts) < 2 {
-			// todo: define proper error
 			return nil, errors.New("unknown")
 		}
-		port, err := strconv.ParseInt(parts[1], 10, 32)
 
+		p, err := strconv.ParseInt(parts[1], 10, 32)
 		if err != nil {
 			log.Errorf("error during string to int32: %s\n", err)
 			return nil, err
 		}
-		// todo: DRY.
+
+		ip := parts[0]
+		port := uint32(p)
+
 		if idx == 0 {
-			tcpAddr.ClientOutput.IP = parts[0]
-			tcpAddr.ClientOutput.Port = uint32(port)
+			tcpAddr.ClientOutput.IP = ip
+			tcpAddr.ClientOutput.Port = port
 		} else if idx == 1 {
-			tcpAddr.ProxyInput.IP = parts[0]
-			tcpAddr.ProxyInput.Port = uint32(port)
+			tcpAddr.ProxyInput.IP = ip
+			tcpAddr.ProxyInput.Port = port
 		} else if idx == 2 {
-			tcpAddr.ProxyOutput.IP = parts[0]
-			tcpAddr.ProxyOutput.Port = uint32(port)
+			tcpAddr.ProxyOutput.IP = ip
+			tcpAddr.ProxyOutput.Port = port
 		} else if idx == 3 {
-			tcpAddr.MysqlInput.IP = parts[0]
-			tcpAddr.MysqlInput.Port = uint32(port)
+			tcpAddr.MysqlInput.IP = ip
+			tcpAddr.MysqlInput.Port = port
 		} else {
 			return nil, errors.New("unknown")
 		}
