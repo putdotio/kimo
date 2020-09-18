@@ -28,7 +28,7 @@ func NewTcpProxy(mgmtAddress string) *TcpProxy {
 	return t
 }
 
-func (t *TcpProxy) GetRecords(ctx context.Context) error {
+func (t *TcpProxy) Setup(ctx context.Context) error {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
 	log.Debugf("Requesting to tcpproxy %s\n", url)
 	response, err := t.HttpClient.Get(url)

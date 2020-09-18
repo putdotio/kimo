@@ -1,11 +1,16 @@
 package types
 
 import (
+	"context"
 	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
 	gopsutilNet "github.com/shirou/gopsutil/net"
 )
+
+type SetupJob interface {
+	Setup(context.Context) error
+}
 
 type Addr struct {
 	IP   string `json:"ip"`
