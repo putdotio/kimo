@@ -49,8 +49,8 @@ func (s *Server) getTcpProxyRecords(wg *sync.WaitGroup) error {
 	}
 	return nil
 }
-func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
-	// todo: debug log
+
+func (s *Server) Setup() {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -60,25 +60,39 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 	go s.getTcpProxyRecords(&wg)
 
 	wg.Wait()
+}
 
-	serverProcesses := make([]types.ServerProcess, 0)
-	kChan := make(chan types.KimoProcess)
+func (s *Server) GetDaemonProcesses() []KimoProcess {
+	kChan := make(chan KimoProcess)
 
 	// get server info
+	var wg sync.WaitGroup
 	go func() {
 		for _, mp := range s.Mysql.Processes {
-			var kp types.KimoProcess
+			var kp KimoProcess
+			kp.Server = s
 			kp.MysqlProcess = &mp
-			go s.GetDaemonProcess(&kp, kp.MysqlProcess.Host, kp.MysqlProcess.Port, kChan)
+			wg.Add(1)
+			kp.SetDaemonProcess(&wg, kChan)
 		}
+		wg.Wait()
+		close(kChan)
 	}()
 
+	kps := make([]KimoProcess, 0)
 	for {
-		if len(serverProcesses) == len(s.Mysql.Processes) {
+		kp, ok := <-kChan
+		if !ok {
 			break
 		}
+		kps = append(kps, kp)
+	}
+	return kps
+}
 
-		kp := <-kChan
+func (s *Server) ReturnResponse(w http.ResponseWriter, kps []KimoProcess) {
+	serverProcesses := make([]types.ServerProcess, 0)
+	for _, kp := range kps {
 		serverProcesses = append(serverProcesses, types.ServerProcess{
 			ID:        kp.MysqlProcess.ID,
 			MysqlUser: kp.MysqlProcess.User,
@@ -99,37 +113,50 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 	}
 	json.NewEncoder(w).Encode(response)
 }
+func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
+	// todo: error handling
+	// todo: debug log
+	s.Setup()
+	kps := s.GetDaemonProcesses()
+	s.ReturnResponse(w, kps)
 
-func (s *Server) Run() error {
-	http.HandleFunc("/procs", s.Processes)
-	err := http.ListenAndServe(s.Config.ListenAddress, nil)
-	if err != nil {
-		return err
-		// todo: handle error
-	}
-	return nil
 }
 
-func (s *Server) GetDaemonProcess(kp *types.KimoProcess, host string, port uint32, kChan chan<- types.KimoProcess) error {
-	// todo: return kp. do not send to channel.
-	// todo: host validation
-	// todo: use request with context
-	var httpClient = &http.Client{Timeout: 2 * time.Second}
-	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, s.Config.DaemonPort, port)
-	fmt.Println("Requesting to ", url)
-	response, err := httpClient.Get(url)
+type KimoProcess struct {
+	Server          *Server
+	DaemonProcess   *types.DaemonProcess
+	TcpProxyProcess *types.DaemonProcess
+	MysqlProcess    *types.MysqlProcess
+	TcpProxyRecord  *types.TcpProxyRecord
+}
+
+func (kp *KimoProcess) SetDaemonProcess(wg *sync.WaitGroup, kChan chan<- KimoProcess) {
+	defer wg.Done()
+	dp, err := kp.GetDaemonProcess(kp.MysqlProcess.Host, kp.MysqlProcess.Port)
 	if err != nil {
 		kp.DaemonProcess = &types.DaemonProcess{}
 		kChan <- *kp
-		return err
+		return
+	}
+	kp.DaemonProcess = dp
+	kChan <- *kp
+}
+
+func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.DaemonProcess, error) {
+	// todo: host validation
+	// todo: use request with context
+	var httpClient = &http.Client{Timeout: 2 * time.Second}
+	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, kp.Server.Config.DaemonPort, port)
+	fmt.Println("Requesting to ", url)
+	response, err := httpClient.Get(url)
+	if err != nil {
+		return nil, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		fmt.Printf("Error: %s\n", response.Status)
 		// todo: return appropriate error
-		kp.DaemonProcess = &types.DaemonProcess{}
-		kChan <- *kp
-		return errors.New("status code is not 200")
+		return nil, errors.New("status code is not 200")
 	}
 
 	ksr := types.KimoDaemonResponse{}
@@ -137,8 +164,7 @@ func (s *Server) GetDaemonProcess(kp *types.KimoProcess, host string, port uint3
 	if err != nil {
 		fmt.Println(err.Error())
 		kp.DaemonProcess = &types.DaemonProcess{}
-		kChan <- *kp
-		return err
+		return nil, err
 	}
 
 	// todo: do not return list from server
@@ -147,33 +173,29 @@ func (s *Server) GetDaemonProcess(kp *types.KimoProcess, host string, port uint3
 
 	if dp.Laddr.Port != port {
 		kp.DaemonProcess = &types.DaemonProcess{}
-		kChan <- *kp
-		return errors.New("could not found")
+		return nil, errors.New("could not found")
 	}
 
 	if dp.Name != "tcpproxy" {
-		kp.DaemonProcess = &dp
-		kChan <- *kp
-		return nil
+		return &dp, nil
 	}
 
 	kp.TcpProxyProcess = &dp
-	pr, err := s.TcpProxy.GetProxyRecord(*kp.TcpProxyProcess, s.TcpProxy.Records)
+	pr, err := kp.Server.TcpProxy.GetProxyRecord(dp, kp.Server.TcpProxy.Records)
 	if err != nil {
 		fmt.Println(err.Error())
-		kp.DaemonProcess = &types.DaemonProcess{}
-		kChan <- *kp
-		return err
+		return nil, err
 	}
 	kp.TcpProxyRecord = pr
-	err = s.GetDaemonProcess(kp, pr.ClientOutput.IP, kp.TcpProxyRecord.ClientOutput.Port, kChan)
+	return kp.GetDaemonProcess(pr.ClientOutput.IP, kp.TcpProxyRecord.ClientOutput.Port)
+}
+
+func (s *Server) Run() error {
+	http.HandleFunc("/procs", s.Processes)
+	err := http.ListenAndServe(s.Config.ListenAddress, nil)
 	if err != nil {
-		fmt.Println(err.Error())
-		kp.DaemonProcess = &types.DaemonProcess{}
-		kChan <- *kp
 		return err
+		// todo: handle error
 	}
-	kp.DaemonProcess = &dp
-	kChan <- *kp
 	return nil
 }

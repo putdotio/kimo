@@ -41,12 +41,6 @@ type TcpProxyRecord struct {
 	ClientOutput Addr
 }
 
-type KimoProcess struct {
-	DaemonProcess   *DaemonProcess
-	TcpProxyProcess *DaemonProcess
-	MysqlProcess    *MysqlProcess
-	TcpProxyRecord  *TcpProxyRecord
-}
 type KimoDaemonResponse struct {
 	Hostname        string          `json:"hostname"`
 	DaemonProcesses []DaemonProcess `json:"processes"`

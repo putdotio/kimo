@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"kimo/types"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"kimo/types"
 )
 
 type TcpProxy struct {
@@ -47,6 +48,7 @@ func (t *TcpProxy) GetRecords() error {
 
 	parsedContents := strings.Split(string(contents), "\n")
 
+	t.Records = make([]types.TcpProxyRecord, 0)
 	for _, record := range parsedContents {
 		addr, err := t.parseRecord(record)
 		if err != nil {

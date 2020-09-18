@@ -31,6 +31,7 @@ func (m *Mysql) GetProcesses() error {
 	if err != nil {
 		return err
 	}
+	m.Processes = make([]types.MysqlProcess, 0)
 	for results.Next() {
 		var mp types.MysqlProcess
 		var host string
