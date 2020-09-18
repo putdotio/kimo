@@ -13,7 +13,7 @@ import (
 )
 
 type KimoProcess struct {
-	Server          *Server
+	KimoRequest     *KimoRequest
 	DaemonProcess   *types.DaemonProcess
 	TcpProxyProcess *types.DaemonProcess
 	MysqlProcess    *types.MysqlProcess
@@ -36,7 +36,7 @@ func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.Daemon
 	// todo: host validation
 	// todo: use request with context
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
-	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, kp.Server.Config.DaemonPort, port)
+	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, kp.KimoRequest.DaemonPort, port)
 	log.Debugf("Requesting to %s\n", url)
 	response, err := httpClient.Get(url)
 	if err != nil {
@@ -71,7 +71,7 @@ func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.Daemon
 	}
 
 	kp.TcpProxyProcess = &dp
-	pr, err := kp.Server.TcpProxy.GetProxyRecord(dp, kp.Server.TcpProxy.Records)
+	pr, err := kp.KimoRequest.TcpProxy.GetProxyRecord(dp, kp.KimoRequest.TcpProxy.Records)
 	if err != nil {
 		log.Errorln(err.Error())
 		return nil, err
