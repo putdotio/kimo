@@ -71,7 +71,7 @@ func (s *Server) GenerateKimoProcesses() []KimoProcess {
 			kp.Server = s
 			kp.MysqlProcess = &mp
 			wg.Add(1)
-			kp.SetDaemonProcess(&wg, kChan)
+			go kp.SetDaemonProcess(&wg, kChan)
 		}
 		wg.Wait()
 		close(kChan)
