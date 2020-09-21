@@ -69,7 +69,7 @@ func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.Daemon
 	}
 
 	kp.TcpProxyProcess = &dp
-	pr, err := kp.KimoRequest.TcpProxy.GetProxyRecord(dp, kp.KimoRequest.TcpProxy.Records)
+	pr, err := kp.KimoRequest.TcpProxy.GetProxyRecord(dp, kp.KimoRequest.TcpProxyRecords)
 	if err != nil {
 		log.Errorln(err.Error())
 		return nil, err

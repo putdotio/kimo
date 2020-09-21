@@ -20,19 +20,19 @@ type Mysql struct {
 	Processes []types.MysqlProcess
 }
 
-func (m *Mysql) Setup(ctx context.Context) error {
+func (m *Mysql) GetProcesses(ctx context.Context, procsC chan<- []*types.MysqlProcess, errC chan<- error) {
 	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {
-		return err
+		errC <- err
 	}
 	defer db.Close()
 
 	results, err := db.Query("select * from PROCESSLIST")
 	if err != nil {
-		return err
+		errC <- err
 	}
-	m.Processes = make([]types.MysqlProcess, 0)
+	mps := make([]*types.MysqlProcess, 0)
 	for results.Next() {
 		var mp types.MysqlProcess
 		var host string
@@ -40,7 +40,7 @@ func (m *Mysql) Setup(ctx context.Context) error {
 		err = results.Scan(&mp.ID, &mp.User, &host, &mp.DB, &mp.Command, &mp.Time, &mp.State, &mp.Info)
 
 		if err != nil {
-			return err
+			errC <- err
 		}
 		s := strings.Split(host, ":")
 		if len(s) < 2 {
@@ -54,7 +54,7 @@ func (m *Mysql) Setup(ctx context.Context) error {
 		}
 		mp.Host = s[0]
 		mp.Port = uint32(parsedPort)
-		m.Processes = append(m.Processes, mp)
+		mps = append(mps, &mp)
 	}
-	return nil
+	procsC <- mps
 }

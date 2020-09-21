@@ -8,8 +8,6 @@ import (
 	"kimo/types"
 	"net/http"
 	"sync"
-
-	"github.com/cenkalti/log"
 )
 
 func (s *Server) NewKimoRequest() *KimoRequest {
@@ -17,48 +15,45 @@ func (s *Server) NewKimoRequest() *KimoRequest {
 	kr.Mysql = mysql.NewMysql(s.Config.DSN)
 	kr.TcpProxy = tcpproxy.NewTcpProxy(s.Config.TcpProxyMgmtAddress)
 	kr.DaemonPort = s.Config.DaemonPort
-	kr.SetupJobs = []types.SetupJob{kr.TcpProxy, kr.Mysql}
 	return kr
 }
 
 type KimoRequest struct {
-	Mysql      *mysql.Mysql
-	TcpProxy   *tcpproxy.TcpProxy
-	DaemonPort uint32
-	SetupJobs  []types.SetupJob
+	Mysql           *mysql.Mysql
+	TcpProxy        *tcpproxy.TcpProxy
+	DaemonPort      uint32
+	MysqlProcesses  []*types.MysqlProcess
+	TcpProxyRecords []*types.TcpProxyRecord
 }
 
 func (kr *KimoRequest) Setup(ctx context.Context) error {
-	errChan := make(chan error)
-	doneChan := make(chan bool)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	for _, job := range kr.SetupJobs {
-		go func(f types.SetupJob) {
-			err := f.Setup(ctx)
-			if err != nil {
-				log.Errorln(err.Error())
-				errChan <- err
-				return
-			}
-			doneChan <- true
-		}(job)
-	}
+	errC := make(chan error)
 
-	doneCount := 0
+	mysqlProcsC := make(chan []*types.MysqlProcess)
+	proxyRecordsC := make(chan []*types.TcpProxyRecord)
+
+	go kr.Mysql.GetProcesses(ctx, mysqlProcsC, errC)
+	go kr.TcpProxy.GetRecords(ctx, proxyRecordsC, errC)
 	for {
+		if kr.MysqlProcesses != nil && kr.TcpProxyRecords != nil {
+			return nil
+		}
 		select {
-		case err := <-errChan:
+		case mps := <-mysqlProcsC:
+			kr.MysqlProcesses = mps
+		case prs := <-proxyRecordsC:
+			kr.TcpProxyRecords = prs
+		case err := <-errC:
+			cancel()
 			return err
-		case <-doneChan:
-			doneCount++
-			if doneCount == len(kr.SetupJobs) {
-				close(errChan)
-				close(doneChan)
-				return nil
-			}
-		default:
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
+
 }
 
 func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) []*KimoProcess {
@@ -67,10 +62,10 @@ func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) []*KimoProcess
 	// get server info
 	var wg sync.WaitGroup
 	go func() {
-		for _, mp := range kr.Mysql.Processes {
+		for _, mp := range kr.MysqlProcesses {
 			var kp KimoProcess
 			kp.KimoRequest = kr
-			kp.MysqlProcess = &mp
+			kp.MysqlProcess = mp
 			wg.Add(1)
 			go kp.SetDaemonProcess(&wg, kpChan)
 		}

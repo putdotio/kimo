@@ -18,7 +18,6 @@ import (
 type TcpProxy struct {
 	MgmtAddress string
 	HttpClient  *http.Client
-	Records     []types.TcpProxyRecord
 }
 
 func NewTcpProxy(mgmtAddress string) *TcpProxy {
@@ -28,39 +27,38 @@ func NewTcpProxy(mgmtAddress string) *TcpProxy {
 	return t
 }
 
-func (t *TcpProxy) Setup(ctx context.Context) error {
+func (t *TcpProxy) GetRecords(ctx context.Context, recordsC chan<- []*types.TcpProxyRecord, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
 	log.Debugf("Requesting to tcpproxy %s\n", url)
 	response, err := t.HttpClient.Get(url)
 	if err != nil {
-		return err
+		errC <- err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		log.Errorf("Error: %s\n", response.Status)
-		return errors.New("status code is not 200")
+		errC <- errors.New("status code is not 200")
 	}
 
 	// Read all the response body
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		log.Errorln(err.Error())
-		return err
+		errC <- err
 	}
 
 	parsedContents := strings.Split(string(contents), "\n")
 
-	t.Records = make([]types.TcpProxyRecord, 0)
+	records := make([]*types.TcpProxyRecord, 0)
 	for _, record := range parsedContents {
 		addr, err := t.parseRecord(record)
 		if err != nil {
 			log.Debugf("record could not be parsed %s \n", record)
 			continue
 		}
-		t.Records = append(t.Records, *addr)
+		records = append(records, addr)
 	}
-	log.Infof("got all (%d) records\n", len(t.Records))
-	return nil
+	recordsC <- records
 }
 
 func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
@@ -105,10 +103,10 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 	return &tcpAddr, nil
 }
 
-func (t *TcpProxy) GetProxyRecord(dp types.DaemonProcess, proxyRecords []types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
+func (t *TcpProxy) GetProxyRecord(dp types.DaemonProcess, proxyRecords []*types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
 	for _, pr := range proxyRecords {
 		if pr.ProxyOutput.IP == dp.Laddr.IP && pr.ProxyOutput.Port == dp.Laddr.Port {
-			return &pr, nil
+			return pr, nil
 		}
 	}
 	return nil, errors.New("could not found")
