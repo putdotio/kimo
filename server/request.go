@@ -141,7 +141,6 @@ func (kr *KimoRequest) SetDaemonProcess(wg *sync.WaitGroup, kp *KimoProcess) {
 	dp, err := kr.GetDaemonProcess(host, port)
 	if err != nil {
 		kp.DaemonProcess = &types.DaemonProcess{}
-		return
 	} else {
 		kp.DaemonProcess = dp
 	}
