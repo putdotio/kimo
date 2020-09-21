@@ -21,6 +21,13 @@ type DaemonProcess struct {
 	CmdLine  []string         `json:"cmdline"`
 }
 
+func (dp *DaemonProcess) IsEmpty() bool {
+	if dp.Pid > 0 {
+		return false
+	}
+	return true
+}
+
 type MysqlProcess struct {
 	ID      int32          `json:"id"`
 	User    string         `json:"user"`

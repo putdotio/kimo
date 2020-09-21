@@ -34,45 +34,28 @@ type Daemon struct {
 	Config *config.Daemon
 }
 
-func (d *Daemon) parsePorts(w http.ResponseWriter, req *http.Request) []uint32 {
-	portsParam, ok := req.URL.Query()["ports"]
-	log.Debugf("ports: %s\n", portsParam)
+func (d *Daemon) parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
+	portParam, ok := req.URL.Query()["port"]
+	log.Debugf("port: %s\n", portParam)
 
-	if !ok {
-		log.Errorln("ports param is not provided.")
-		return nil
+	if !ok || len(portParam) < 1 {
+		log.Errorln("port param is not provided.")
+		return 0, nil
 	}
 
-	var pl []uint32
-	for _, port := range portsParam {
-		p, err := strconv.ParseInt(port, 10, 32)
-		if err != nil {
-			log.Errorln("error during string to int32: %s\n", err)
-			continue
-		}
-		pl = append(pl, uint32(p))
+	p, err := strconv.ParseInt(portParam[0], 10, 32)
+	if err != nil {
+		log.Errorln("error during string to int32: %s\n", err)
+		return 0, err
 	}
-	if len(pl) < 1 {
-		return nil
-	}
-	return pl
-}
-
-func (d *Daemon) isRequestedPort(localPort uint32, requestedPorts []uint32) bool {
-	for _, requestedPort := range requestedPorts {
-		if requestedPort == localPort {
-			return true
-		}
-	}
-	return false
+	return uint32(p), nil
 }
 
 func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 	// todo: cache result for a short period (10s? 30s?)
-	// todo: should server return real host ip & address if server is tcp proxy?
-	ports := d.parsePorts(w, req)
-	if ports == nil {
-		http.Error(w, "ports param is required", http.StatusBadRequest)
+	port, err := d.parsePortParam(w, req)
+	if err != nil {
+		http.Error(w, "port param is required", http.StatusBadRequest)
 		return
 	}
 	connections, err := gopsutilNet.Connections("all")
@@ -88,10 +71,10 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	daemonProcesses := make([]types.DaemonProcess, 0)
+	var dp types.DaemonProcess
 
 	for _, conn := range connections {
-		if !d.isRequestedPort(conn.Laddr.Port, ports) {
+		if conn.Laddr.Port != port {
 			continue
 		}
 
@@ -110,27 +93,29 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 			log.Debugf("Cmdline could not found for %d\n", process.Pid)
 		}
 
-		daemonProcesses = append(daemonProcesses, types.DaemonProcess{
-			Laddr:   conn.Laddr,
-			Status:  conn.Status,
-			Pid:     conn.Pid,
-			Name:    name,
-			CmdLine: cls,
-		})
+		hostname, err := os.Hostname()
+		if err != nil {
+			log.Errorf("Hostname could not found")
+			hostname = "UNKNOWN"
+		}
+
+		dp = types.DaemonProcess{
+			Laddr:    conn.Laddr,
+			Status:   conn.Status,
+			Pid:      conn.Pid,
+			Name:     name,
+			CmdLine:  cls,
+			Hostname: hostname,
+		}
+		break
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Errorf("Hostname could not found")
-		hostname = "UNKNOWN"
+	if dp.IsEmpty() {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
 	}
-
-	response := &types.KimoDaemonResponse{
-		Hostname:        hostname,
-		DaemonProcesses: daemonProcesses,
-	}
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(&dp)
 
 }
 

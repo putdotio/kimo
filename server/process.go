@@ -23,7 +23,7 @@ type KimoProcess struct {
 func (kp *KimoProcess) GetDaemonProcess(ctx context.Context, host string, port uint32) (*types.DaemonProcess, error) {
 	// todo: use request with context
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
-	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, kp.KimoRequest.Server.Config.DaemonPort, port)
+	url := fmt.Sprintf("http://%s:%d/conns?port=%d", host, kp.KimoRequest.Server.Config.DaemonPort, port)
 	log.Debugf("Requesting to %s\n", url)
 	response, err := httpClient.Get(url)
 	if err != nil {
@@ -35,17 +35,14 @@ func (kp *KimoProcess) GetDaemonProcess(ctx context.Context, host string, port u
 		return nil, errors.New("status code is not 200")
 	}
 
-	ksr := types.KimoDaemonResponse{}
-	err = json.NewDecoder(response.Body).Decode(&ksr)
+	dp := types.DaemonProcess{}
+	err = json.NewDecoder(response.Body).Decode(&dp)
+
+	// todo: consider NotFound
 	if err != nil {
 		log.Errorln(err.Error())
 		return nil, err
 	}
-
-	// todo: do not return list from server
-	// todo: consider empty list.
-	dp := ksr.DaemonProcesses[0]
-	dp.Hostname = ksr.Hostname
 
 	return &dp, nil
 }
