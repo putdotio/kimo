@@ -84,16 +84,16 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 		port := uint32(p)
 
 		if idx == 0 {
-			tcpAddr.ClientOutput.IP = ip
+			tcpAddr.ClientOutput.Host = ip
 			tcpAddr.ClientOutput.Port = port
 		} else if idx == 1 {
-			tcpAddr.ProxyInput.IP = ip
+			tcpAddr.ProxyInput.Host = ip
 			tcpAddr.ProxyInput.Port = port
 		} else if idx == 2 {
-			tcpAddr.ProxyOutput.IP = ip
+			tcpAddr.ProxyOutput.Host = ip
 			tcpAddr.ProxyOutput.Port = port
 		} else if idx == 3 {
-			tcpAddr.MysqlInput.IP = ip
+			tcpAddr.MysqlInput.Host = ip
 			tcpAddr.MysqlInput.Port = port
 		} else {
 			return nil, errors.New("unknown")
@@ -101,13 +101,4 @@ func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
 	}
 
 	return &tcpAddr, nil
-}
-
-func (t *TcpProxy) GetProxyRecord(dp types.DaemonProcess, proxyRecords []*types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
-	for _, pr := range proxyRecords {
-		if pr.ProxyOutput.IP == dp.Laddr.IP && pr.ProxyOutput.Port == dp.Laddr.Port {
-			return pr, nil
-		}
-	}
-	return nil, errors.New("could not found")
 }

@@ -8,7 +8,7 @@ import (
 )
 
 type Addr struct {
-	IP   string `json:"ip"`
+	Host string `json:"host"`
 	Port uint32 `json:"port"`
 }
 
@@ -24,13 +24,12 @@ type DaemonProcess struct {
 type MysqlProcess struct {
 	ID      int32          `json:"id"`
 	User    string         `json:"user"`
-	Host    string         `json:"host"`
-	Port    uint32         `json:"port"`
 	DB      sql.NullString `json:"db"`
 	Command string         `json:"command"`
 	Time    string         `json:"time"`
 	State   sql.NullString `json:"state"`
 	Info    sql.NullString `json:"info"`
+	Address Addr           `json:"address"`
 }
 
 type TcpProxyRecord struct {

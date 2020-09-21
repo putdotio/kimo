@@ -3,10 +3,11 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"kimo/types"
 	"log"
 	"strconv"
 	"strings"
+
+	"kimo/types"
 )
 
 func NewMysql(dsn string) *Mysql {
@@ -52,8 +53,10 @@ func (m *Mysql) GetProcesses(ctx context.Context, procsC chan<- []*types.MysqlPr
 			log.Printf("error during string to int32: %s\n", err)
 			continue
 		}
-		mp.Host = s[0]
-		mp.Port = uint32(parsedPort)
+		mp.Address = types.Addr{
+			Host: s[0],
+			Port: uint32(parsedPort),
+		}
 		mps = append(mps, &mp)
 	}
 	procsC <- mps
