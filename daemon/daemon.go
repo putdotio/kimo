@@ -13,17 +13,6 @@ import (
 	gopsutilProcess "github.com/shirou/gopsutil/process"
 )
 
-// Run on servers
-// serve data through http api
-// collect data when a new request comes through api
-// use gopsutil
-
-// Accept port as param
-// return process info:
-//  process name
-//  host name
-//
-
 func NewDaemon(cfg *config.Daemon) *Daemon {
 	d := new(Daemon)
 	d.Config = cfg
@@ -65,13 +54,13 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	processes, nil := gopsutilProcess.Processes()
+	processes, err := gopsutilProcess.Processes()
 	if err != nil {
 		log.Errorf("Error while getting connections: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var dp types.DaemonProcess
+	dp := types.DaemonProcess{}
 
 	for _, conn := range connections {
 		if conn.Laddr.Port != port {
@@ -112,7 +101,7 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if dp.IsEmpty() {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "process not found!", http.StatusNotFound)
 		return
 	}
 	json.NewEncoder(w).Encode(&dp)

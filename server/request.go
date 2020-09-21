@@ -8,6 +8,7 @@ import (
 	"kimo/tcpproxy"
 	"kimo/types"
 	"net/http"
+	"strconv"
 	"sync"
 
 	"github.com/cenkalti/log"
@@ -101,12 +102,19 @@ func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) {
 func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter) {
 	serverProcesses := make([]types.ServerProcess, 0)
 	for _, kp := range kr.KimoProcesses {
+
+		ut, err := strconv.ParseUint(kp.MysqlProcess.Time, 10, 32)
+		if err != nil {
+			log.Errorf("time %s could not be converted to int", kp.MysqlProcess.Time)
+		}
+		t := uint32(ut)
+
 		serverProcesses = append(serverProcesses, types.ServerProcess{
 			ID:        kp.MysqlProcess.ID,
 			MysqlUser: kp.MysqlProcess.User,
 			DB:        kp.MysqlProcess.DB.String,
 			Command:   kp.MysqlProcess.Command,
-			Time:      kp.MysqlProcess.Time,
+			Time:      t,
 			State:     kp.MysqlProcess.State.String,
 			Info:      kp.MysqlProcess.Info.String,
 			CmdLine:   kp.DaemonProcess.CmdLine,

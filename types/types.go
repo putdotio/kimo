@@ -60,7 +60,7 @@ type ServerProcess struct {
 	MysqlUser string   `json:"mysql_user"`
 	DB        string   `json:"db"`
 	Command   string   `json:"command"`
-	Time      string   `json:"time"`
+	Time      uint32   `json:"time"`
 	State     string   `json:"state"`
 	Info      string   `json:"info"`
 	CmdLine   []string `json:"cmdline"`
