@@ -58,4 +58,5 @@ type ServerProcess struct {
 	Info      string   `json:"info"`
 	CmdLine   []string `json:"cmdline"`
 	Pid       int32    `json:"pid"`
+	Host      string   `json:"host`
 }

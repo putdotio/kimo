@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,7 +20,7 @@ type KimoProcess struct {
 	KimoRequest    *KimoRequest
 }
 
-func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.DaemonProcess, error) {
+func (kp *KimoProcess) GetDaemonProcess(ctx context.Context, host string, port uint32) (*types.DaemonProcess, error) {
 	// todo: use request with context
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
 	url := fmt.Sprintf("http://%s:%d/conns?ports=%d", host, kp.KimoRequest.Server.Config.DaemonPort, port)
@@ -42,16 +43,14 @@ func (kp *KimoProcess) GetDaemonProcess(host string, port uint32) (*types.Daemon
 	}
 
 	// todo: do not return list from server
+	// todo: consider empty list.
 	dp := ksr.DaemonProcesses[0]
 	dp.Hostname = ksr.Hostname
 
-	if dp.Laddr.Port != port {
-		return nil, errors.New("could not found")
-	}
 	return &dp, nil
 }
 
-func (kp *KimoProcess) SetDaemonProcess(wg *sync.WaitGroup) {
+func (kp *KimoProcess) SetDaemonProcess(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var host string
 	var port uint32
@@ -63,7 +62,7 @@ func (kp *KimoProcess) SetDaemonProcess(wg *sync.WaitGroup) {
 		host = kp.MysqlProcess.Address.Host
 		port = kp.MysqlProcess.Address.Port
 	}
-	dp, err := kp.GetDaemonProcess(host, port)
+	dp, err := kp.GetDaemonProcess(ctx, host, port)
 	if err != nil {
 		kp.DaemonProcess = &types.DaemonProcess{}
 	} else {

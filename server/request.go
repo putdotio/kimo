@@ -90,26 +90,12 @@ func (kr *KimoRequest) Setup(ctx context.Context) error {
 }
 
 func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) {
-	doneC := make(chan bool)
-
 	var wg sync.WaitGroup
-	go func() {
-		for _, kp := range kr.KimoProcesses {
-			wg.Add(1)
-			go kp.SetDaemonProcess(&wg)
-		}
-		wg.Wait()
-		doneC <- true
-	}()
-
-	for {
-		select {
-		case <-doneC:
-			return
-		case <-ctx.Done():
-			return
-		}
+	for _, kp := range kr.KimoProcesses {
+		wg.Add(1)
+		go kp.SetDaemonProcess(ctx, &wg)
 	}
+	wg.Wait()
 }
 
 func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter) {
@@ -125,6 +111,7 @@ func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter
 			Info:      kp.MysqlProcess.Info.String,
 			CmdLine:   kp.DaemonProcess.CmdLine,
 			Pid:       kp.DaemonProcess.Pid,
+			Host:      kp.DaemonProcess.Hostname,
 		})
 	}
 
