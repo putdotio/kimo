@@ -1,0 +1,16 @@
+name: learn-github-actions
+on: [release]
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2.3.2
+        with:
+          fetch-depth: 0
+    steps:
+      -
+        name: Setup Go
+        uses: actions/checkout@v2 
+      - run: ./goreleaser --snapshot --parallelism 2
