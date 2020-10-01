@@ -58,20 +58,6 @@ func main() {
 		{
 			Name:  "server",
 			Usage: "run server",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "host",
-					Usage: "MySQL host",
-				},
-				cli.StringFlag{
-					Name:  "user",
-					Usage: "MySQL user",
-				},
-				cli.StringFlag{
-					Name:  "password",
-					Usage: "MySQL password",
-				},
-			},
 			Action: func(c *cli.Context) error {
 				kimoServer := server.NewServer(&cfg.Server)
 				kimoServer.Config = &cfg.Server
