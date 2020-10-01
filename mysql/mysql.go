@@ -21,7 +21,7 @@ type Mysql struct {
 	Processes []types.MysqlProcess
 }
 
-func (m *Mysql) GetProcesses(ctx context.Context, procsC chan<- []*types.MysqlProcess, errC chan<- error) {
+func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*types.MysqlProcess, errC chan<- error) {
 	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {

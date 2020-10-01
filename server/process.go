@@ -20,7 +20,7 @@ type KimoProcess struct {
 	KimoRequest    *KimoRequest
 }
 
-func (kp *KimoProcess) GetDaemonProcess(ctx context.Context, host string, port uint32) (*types.DaemonProcess, error) {
+func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port uint32) (*types.DaemonProcess, error) {
 	// todo: use request with context
 	var httpClient = &http.Client{Timeout: 2 * time.Second}
 	url := fmt.Sprintf("http://%s:%d/conns?port=%d", host, kp.KimoRequest.Server.Config.DaemonPort, port)
@@ -59,7 +59,7 @@ func (kp *KimoProcess) SetDaemonProcess(ctx context.Context, wg *sync.WaitGroup)
 		host = kp.MysqlProcess.Address.Host
 		port = kp.MysqlProcess.Address.Port
 	}
-	dp, err := kp.GetDaemonProcess(ctx, host, port)
+	dp, err := kp.FetchDaemonProcess(ctx, host, port)
 	if err != nil {
 		kp.DaemonProcess = &types.DaemonProcess{}
 	} else {

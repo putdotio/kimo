@@ -34,7 +34,7 @@ func (s *Server) NewKimoRequest() *KimoRequest {
 
 func (kr *KimoRequest) InitializeKimoProcesses(mps []*types.MysqlProcess, tprs []*types.TcpProxyRecord) error {
 	for _, mp := range mps {
-		tpr, err := kr.GetTcpProxyRecord(mp.Address, tprs)
+		tpr, err := kr.FetchTcpProxyRecord(mp.Address, tprs)
 		if err != nil {
 			log.Debug(err.Error())
 			// todo: handle
@@ -48,7 +48,7 @@ func (kr *KimoRequest) InitializeKimoProcesses(mps []*types.MysqlProcess, tprs [
 	return nil
 }
 
-func (kr *KimoRequest) GetTcpProxyRecord(addr types.Addr, proxyRecords []*types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
+func (kr *KimoRequest) FetchTcpProxyRecord(addr types.Addr, proxyRecords []*types.TcpProxyRecord) (*types.TcpProxyRecord, error) {
 	for _, pr := range proxyRecords {
 		if pr.ProxyOutput.Host == addr.Host && pr.ProxyOutput.Port == addr.Port {
 			return pr, nil
@@ -69,8 +69,8 @@ func (kr *KimoRequest) Setup(ctx context.Context) error {
 	var mysqlProcesses []*types.MysqlProcess
 	var tcpProxyRecords []*types.TcpProxyRecord
 
-	go kr.Mysql.GetProcesses(ctx, mysqlProcsC, errC)
-	go kr.TcpProxy.GetRecords(ctx, proxyRecordsC, errC)
+	go kr.Mysql.FetchProcesses(ctx, mysqlProcsC, errC)
+	go kr.TcpProxy.FetchRecords(ctx, proxyRecordsC, errC)
 	for {
 		if mysqlProcesses != nil && tcpProxyRecords != nil {
 			return kr.InitializeKimoProcesses(mysqlProcesses, tcpProxyRecords)
