@@ -39,7 +39,7 @@ type MysqlProcess struct {
 	Address Addr           `json:"address"`
 }
 
-type TcpProxyRecord struct {
+type TCPProxyRecord struct {
 	ProxyInput   Addr
 	ProxyOutput  Addr
 	MysqlInput   Addr

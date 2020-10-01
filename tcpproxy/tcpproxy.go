@@ -15,19 +15,19 @@ import (
 	"github.com/cenkalti/log"
 )
 
-type TcpProxy struct {
+type TCPProxy struct {
 	MgmtAddress string
 	HttpClient  *http.Client
 }
 
-func NewTcpProxy(mgmtAddress string) *TcpProxy {
-	t := new(TcpProxy)
+func NewTCPProxy(mgmtAddress string) *TCPProxy {
+	t := new(TCPProxy)
 	t.MgmtAddress = mgmtAddress
 	t.HttpClient = &http.Client{Timeout: 2 * time.Second}
 	return t
 }
 
-func (t *TcpProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TcpProxyRecord, errC chan<- error) {
+func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TCPProxyRecord, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
 	log.Debugf("Requesting to tcpproxy %s\n", url)
 	response, err := t.HttpClient.Get(url)
@@ -49,7 +49,7 @@ func (t *TcpProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.Tc
 
 	parsedContents := strings.Split(string(contents), "\n")
 
-	records := make([]*types.TcpProxyRecord, 0)
+	records := make([]*types.TCPProxyRecord, 0)
 	for _, record := range parsedContents {
 		addr, err := t.parseRecord(record)
 		if err != nil {
@@ -61,13 +61,13 @@ func (t *TcpProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.Tc
 	recordsC <- records
 }
 
-func (t *TcpProxy) parseRecord(record string) (*types.TcpProxyRecord, error) {
+func (t *TCPProxy) parseRecord(record string) (*types.TCPProxyRecord, error) {
 	// Sample Output:
 	// 10.0.4.219:36149 -> 10.0.0.68:3306 -> 10.0.0.68:35423 -> 10.0.0.241:3306
 	// <client>:<output_port> -> <proxy>:<input_port> -> <proxy>:<output_port>: -> <mysql>:<input_port>
 	record = strings.TrimSpace(record)
 	items := strings.Split(record, "->")
-	var tcpAddr types.TcpProxyRecord
+	var tcpAddr types.TCPProxyRecord
 	for idx, item := range items {
 		parts := strings.Split(strings.TrimSpace(item), ":")
 		if len(parts) < 2 {

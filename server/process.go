@@ -16,7 +16,7 @@ import (
 type KimoProcess struct {
 	DaemonProcess  *types.DaemonProcess
 	MysqlProcess   *types.MysqlProcess
-	TcpProxyRecord *types.TcpProxyRecord
+	TCPProxyRecord *types.TCPProxyRecord
 	KimoRequest    *KimoRequest
 }
 
@@ -52,9 +52,9 @@ func (kp *KimoProcess) SetDaemonProcess(ctx context.Context, wg *sync.WaitGroup)
 	var host string
 	var port uint32
 
-	if kp.TcpProxyRecord != nil {
-		host = kp.TcpProxyRecord.ClientOutput.Host
-		port = kp.TcpProxyRecord.ClientOutput.Port
+	if kp.TCPProxyRecord != nil {
+		host = kp.TCPProxyRecord.ClientOutput.Host
+		port = kp.TCPProxyRecord.ClientOutput.Port
 	} else {
 		host = kp.MysqlProcess.Address.Host
 		port = kp.MysqlProcess.Address.Port
