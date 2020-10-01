@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"kimo/config"
 	"net/http"
 	"time"
@@ -40,9 +41,15 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func (s *Server) Health(w http.ResponseWriter, req *http.Request) {
+	// todo: real health check
+	fmt.Fprintf(w, "OK")
+}
+
 func (s *Server) Run() error {
 	log.Infof("Running server on %s \n", s.Config.ListenAddress)
 	http.HandleFunc("/procs", s.Processes)
+	http.HandleFunc("/health", s.Health)
 	err := http.ListenAndServe(s.Config.ListenAddress, nil)
 	if err != nil {
 		log.Errorln(err.Error())
