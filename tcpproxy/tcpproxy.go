@@ -29,15 +29,17 @@ func NewTCPProxy(mgmtAddress string) *TCPProxy {
 
 func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TCPProxyRecord, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
-	log.Debugf("Requesting to tcpproxy %s\n", url)
+	log.Infof("Requesting to tcpproxy %s\n", url)
 	response, err := t.HttpClient.Get(url)
 	if err != nil {
 		errC <- err
+		return
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		log.Errorf("Error: %s\n", response.Status)
 		errC <- errors.New("status code is not 200")
+		return
 	}
 
 	// Read all the response body
@@ -45,6 +47,7 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TC
 	if err != nil {
 		log.Errorln(err.Error())
 		errC <- err
+		return
 	}
 
 	parsedContents := strings.Split(string(contents), "\n")

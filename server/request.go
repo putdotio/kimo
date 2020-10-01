@@ -81,6 +81,7 @@ func (kr *KimoRequest) Setup(ctx context.Context) error {
 		case tprs := <-proxyRecordsC:
 			tcpProxyRecords = tprs
 		case err := <-errC:
+			log.Errorf("Error occured: %s", err.Error())
 			cancel()
 			return err
 		case <-ctx.Done():

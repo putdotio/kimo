@@ -11,6 +11,7 @@ import (
 )
 
 func NewServer(cfg *config.Server) *Server {
+	log.Infoln("Creating a new server...")
 	s := new(Server)
 	s.Config = cfg
 	return s
@@ -40,6 +41,7 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Run() error {
+	log.Infof("Running server on %s \n", s.Config.ListenAddress)
 	http.HandleFunc("/procs", s.Processes)
 	err := http.ListenAndServe(s.Config.ListenAddress, nil)
 	if err != nil {
