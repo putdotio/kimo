@@ -1,5 +1,5 @@
 on: release
-jobs::
+jobs:
   before:
     hooks:
       - go mod download
