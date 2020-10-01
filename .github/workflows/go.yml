@@ -1,3 +1,4 @@
+on: release
 before:
   hooks:
     - go mod download
