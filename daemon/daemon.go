@@ -69,6 +69,10 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 
 		process := d.findProcess(conn.Pid, processes)
 		if err != nil {
+			log.Debugf("Error occured while finding the process %s\n", err.Error())
+			continue
+		}
+		if process == nil {
 			log.Debugf("Process could not found for %d\n", conn.Pid)
 			continue
 		}
