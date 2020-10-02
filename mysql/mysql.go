@@ -3,13 +3,15 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"log"
 	"strconv"
 	"strings"
 
 	"kimo/types"
+
+	"github.com/cenkalti/log"
 )
 
+// todo: DRY. too much duplicated codes inside New.. functions
 func NewMysql(dsn string) *Mysql {
 	m := new(Mysql)
 	m.DSN = dsn
@@ -19,6 +21,7 @@ func NewMysql(dsn string) *Mysql {
 type Mysql struct {
 	DSN       string
 	Processes []types.MysqlProcess
+	Logger    log.Logger
 }
 
 func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*types.MysqlProcess, errC chan<- error) {
@@ -50,7 +53,7 @@ func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*types.Mysql
 		}
 		parsedPort, err := strconv.ParseInt(s[1], 10, 32)
 		if err != nil {
-			log.Printf("error during string to int32: %s\n", err)
+			m.Logger.Errorf("error during string to int32: %s\n", err)
 			continue
 		}
 		mp.Address = types.Addr{

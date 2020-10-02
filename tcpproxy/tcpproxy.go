@@ -18,6 +18,7 @@ import (
 type TCPProxy struct {
 	MgmtAddress string
 	HttpClient  *http.Client
+	Logger      log.Logger
 }
 
 func NewTCPProxy(mgmtAddress string) *TCPProxy {
@@ -29,7 +30,7 @@ func NewTCPProxy(mgmtAddress string) *TCPProxy {
 
 func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TCPProxyRecord, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
-	log.Infof("Requesting to tcpproxy %s\n", url)
+	t.Logger.Infof("Requesting to tcpproxy %s\n", url)
 	response, err := t.HttpClient.Get(url)
 	if err != nil {
 		errC <- err
@@ -37,7 +38,7 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TC
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		log.Errorf("Error: %s\n", response.Status)
+		t.Logger.Errorf("Error: %s\n", response.Status)
 		errC <- errors.New("status code is not 200")
 		return
 	}
@@ -45,7 +46,7 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TC
 	// Read all the response body
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Errorln(err.Error())
+		t.Logger.Errorln(err.Error())
 		errC <- err
 		return
 	}
@@ -56,7 +57,7 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TC
 	for _, record := range parsedContents {
 		addr, err := t.parseRecord(record)
 		if err != nil {
-			log.Debugf("record could not be parsed %s \n", record)
+			t.Logger.Debugf("record could not be parsed %s \n", record)
 			continue
 		}
 		records = append(records, addr)
@@ -79,7 +80,7 @@ func (t *TCPProxy) parseRecord(record string) (*types.TCPProxyRecord, error) {
 
 		p, err := strconv.ParseInt(parts[1], 10, 32)
 		if err != nil {
-			log.Errorf("error during string to int32: %s\n", err)
+			t.Logger.Errorf("error during string to int32: %s\n", err)
 			return nil, err
 		}
 

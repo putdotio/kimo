@@ -11,15 +11,22 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func NewServer(cfg *config.Server) *Server {
-	log.Infoln("Creating a new server...")
+func NewServer(cfg *config.Config) *Server {
 	s := new(Server)
-	s.Config = cfg
+	s.Config = &cfg.Server
+	s.Logger = log.NewLogger("server")
+	if cfg.Debug {
+		s.Logger.SetLevel(log.DEBUG)
+	} else {
+		s.Logger.SetLevel(log.INFO)
+	}
+	s.Logger.Infoln("Creating a new server...")
 	return s
 }
 
 type Server struct {
 	Config *config.Server
+	Logger log.Logger
 }
 
 func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
@@ -27,16 +34,16 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 	defer cancel()
 
 	kr := s.NewKimoRequest()
-	log.Infoln("Setup...")
+	s.Logger.Infoln("Setup...")
 	err := kr.Setup(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Infoln("Generating kimo processes...")
+	s.Logger.Infoln("Generating kimo processes...")
 	kr.GenerateKimoProcesses(ctx)
-	log.Infoln("Returning response...")
+	s.Logger.Infoln("Returning response...")
 	kr.ReturnResponse(ctx, w)
 
 }
@@ -47,12 +54,12 @@ func (s *Server) Health(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Run() error {
-	log.Infof("Running server on %s \n", s.Config.ListenAddress)
+	s.Logger.Infof("Running server on %s \n", s.Config.ListenAddress)
 	http.HandleFunc("/procs", s.Processes)
 	http.HandleFunc("/health", s.Health)
 	err := http.ListenAndServe(s.Config.ListenAddress, nil)
 	if err != nil {
-		log.Errorln(err.Error())
+		s.Logger.Errorln(err.Error())
 		return err
 	}
 	return nil
