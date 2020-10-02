@@ -57,7 +57,7 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TC
 	for _, record := range parsedContents {
 		addr, err := t.parseRecord(record)
 		if err != nil {
-			t.Logger.Debugf("record could not be parsed %s \n", record)
+			t.Logger.Debugf("record '%s' could not be parsed \n", record)
 			continue
 		}
 		records = append(records, addr)

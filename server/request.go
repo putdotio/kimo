@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"kimo/mysql"
 	"kimo/tcpproxy"
 	"kimo/types"
@@ -39,10 +38,9 @@ func (s *Server) NewKimoRequest() *KimoRequest {
 
 func (kr *KimoRequest) InitializeKimoProcesses(mps []*types.MysqlProcess, tprs []*types.TCPProxyRecord) error {
 	for _, mp := range mps {
-		tpr, err := kr.FetchTCPProxyRecord(mp.Address, tprs)
-		if err != nil {
-			kr.Logger.Debug(err.Error())
-			// todo: handle
+		tpr := kr.FetchTCPProxyRecord(mp.Address, tprs)
+		if tpr == nil {
+			continue
 		}
 		kr.KimoProcesses = append(kr.KimoProcesses, &KimoProcess{
 			MysqlProcess:   mp,
@@ -54,13 +52,13 @@ func (kr *KimoRequest) InitializeKimoProcesses(mps []*types.MysqlProcess, tprs [
 	return nil
 }
 
-func (kr *KimoRequest) FetchTCPProxyRecord(addr types.Addr, proxyRecords []*types.TCPProxyRecord) (*types.TCPProxyRecord, error) {
+func (kr *KimoRequest) FetchTCPProxyRecord(addr types.Addr, proxyRecords []*types.TCPProxyRecord) *types.TCPProxyRecord {
 	for _, pr := range proxyRecords {
 		if pr.ProxyOutput.Host == addr.Host && pr.ProxyOutput.Port == addr.Port {
-			return pr, nil
+			return pr
 		}
 	}
-	return nil, errors.New("could not found")
+	return nil
 }
 
 func (kr *KimoRequest) Setup(ctx context.Context) error {
