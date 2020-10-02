@@ -30,7 +30,7 @@ type Server struct {
 }
 
 func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	kr := s.NewKimoRequest()

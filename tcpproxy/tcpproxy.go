@@ -24,7 +24,7 @@ type TCPProxy struct {
 func NewTCPProxy(mgmtAddress string) *TCPProxy {
 	t := new(TCPProxy)
 	t.MgmtAddress = mgmtAddress
-	t.HttpClient = &http.Client{Timeout: 2 * time.Second}
+	t.HttpClient = &http.Client{Timeout: 10 * time.Second}
 	return t
 }
 
