@@ -36,6 +36,7 @@ type Mysql struct {
 }
 
 func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProcess, errC chan<- error) {
+	log.Infoln("Requesting to mysql...")
 	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {

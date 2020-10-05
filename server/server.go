@@ -27,7 +27,6 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 	defer cancel()
 
 	kr := s.NewKimoRequest()
-	log.Infoln("Setup...")
 	err := kr.Setup(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
