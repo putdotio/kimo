@@ -5,16 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"kimo/types"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"kimo/types"
-
 	"github.com/cenkalti/log"
 )
 
+// TCPProxyRecord is type for defining a connection through TCP Proxy to MySQL
+type TCPProxyRecord struct {
+	ProxyInput   types.Addr
+	ProxyOutput  types.Addr
+	MysqlInput   types.Addr
+	ClientOutput types.Addr
+}
 type TCPProxy struct {
 	MgmtAddress string
 	HttpClient  *http.Client
@@ -28,7 +34,7 @@ func NewTCPProxy(mgmtAddress string, connectTimeout, readTimeout time.Duration) 
 	return t
 }
 
-func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TCPProxyRecord, errC chan<- error) {
+func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*TCPProxyRecord, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
 	t.Logger.Infof("Requesting to tcpproxy %s\n", url)
 	response, err := t.HttpClient.Get(url)
@@ -53,7 +59,7 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TC
 
 	parsedContents := strings.Split(string(contents), "\n")
 
-	records := make([]*types.TCPProxyRecord, 0)
+	records := make([]*TCPProxyRecord, 0)
 	for _, record := range parsedContents {
 		addr, err := t.parseRecord(record)
 		if err != nil {
@@ -65,13 +71,13 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TC
 	recordsC <- records
 }
 
-func (t *TCPProxy) parseRecord(record string) (*types.TCPProxyRecord, error) {
+func (t *TCPProxy) parseRecord(record string) (*TCPProxyRecord, error) {
 	// Sample Output:
 	// 10.0.4.219:36149 -> 10.0.0.68:3306 -> 10.0.0.68:35423 -> 10.0.0.241:3306
 	// <client>:<output_port> -> <proxy>:<input_port> -> <proxy>:<output_port>: -> <mysql>:<input_port>
 	record = strings.TrimSpace(record)
 	items := strings.Split(record, "->")
-	var tcpAddr types.TCPProxyRecord
+	var tcpAddr TCPProxyRecord
 	for idx, item := range items {
 		parts := strings.Split(strings.TrimSpace(item), ":")
 		if len(parts) < 2 {

@@ -3,13 +3,25 @@ package server
 import (
 	"context"
 	"database/sql"
+	"kimo/types"
 	"strconv"
 	"strings"
 
-	"kimo/types"
-
 	"github.com/cenkalti/log"
+	_ "github.com/go-sql-driver/mysql" // imports mysql driver
 )
+
+// MysqlProcess is the process type in terms of MySQL context (a row from processlist table)
+type MysqlProcess struct {
+	ID      int32          `json:"id"`
+	User    string         `json:"user"`
+	DB      sql.NullString `json:"db"`
+	Command string         `json:"command"`
+	Time    string         `json:"time"`
+	State   sql.NullString `json:"state"`
+	Info    sql.NullString `json:"info"`
+	Address types.Addr     `json:"address"`
+}
 
 // todo: DRY. too much duplicated codes inside New.. functions
 func NewMysql(dsn string) *Mysql {
@@ -20,11 +32,11 @@ func NewMysql(dsn string) *Mysql {
 
 type Mysql struct {
 	DSN       string
-	Processes []types.MysqlProcess
+	Processes []MysqlProcess
 	Logger    log.Logger
 }
 
-func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*types.MysqlProcess, errC chan<- error) {
+func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProcess, errC chan<- error) {
 	db, err := sql.Open("mysql", m.DSN)
 
 	if err != nil {
@@ -36,9 +48,9 @@ func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*types.Mysql
 	if err != nil {
 		errC <- err
 	}
-	mps := make([]*types.MysqlProcess, 0)
+	mps := make([]*MysqlProcess, 0)
 	for results.Next() {
-		var mp types.MysqlProcess
+		var mp MysqlProcess
 		var host string
 
 		err = results.Scan(&mp.ID, &mp.User, &host, &mp.DB, &mp.Command, &mp.Time, &mp.State, &mp.Info)

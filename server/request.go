@@ -9,6 +9,25 @@ import (
 	"sync"
 )
 
+// KimoServerResponse is type for returning a response from kimo server
+type KimoServerResponse struct {
+	ServerProcesses []ServerProcess `json:"processes"`
+}
+
+// ServerProcess is the final processes that is combined from DaemonProcess + TCPProxyRecord + MysqlProcess
+type ServerProcess struct {
+	ID        int32    `json:"id"`
+	MysqlUser string   `json:"mysql_user"`
+	DB        string   `json:"db"`
+	Command   string   `json:"command"`
+	Time      uint32   `json:"time"`
+	State     string   `json:"state"`
+	Info      string   `json:"info"`
+	CmdLine   []string `json:"cmdline"`
+	Pid       int32    `json:"pid"`
+	Host      string   `json:"host"`
+}
+
 type KimoRequest struct {
 	Mysql         *Mysql
 	Server        *Server
@@ -30,7 +49,7 @@ func (s *Server) NewKimoRequest() *KimoRequest {
 	return kr
 }
 
-func (kr *KimoRequest) InitializeKimoProcesses(mps []*types.MysqlProcess, tprs []*types.TCPProxyRecord) error {
+func (kr *KimoRequest) InitializeKimoProcesses(mps []*MysqlProcess, tprs []*TCPProxyRecord) error {
 	for _, mp := range mps {
 		tpr := kr.FetchTCPProxyRecord(mp.Address, tprs)
 		if tpr == nil {
@@ -46,7 +65,7 @@ func (kr *KimoRequest) InitializeKimoProcesses(mps []*types.MysqlProcess, tprs [
 	return nil
 }
 
-func (kr *KimoRequest) FetchTCPProxyRecord(addr types.Addr, proxyRecords []*types.TCPProxyRecord) *types.TCPProxyRecord {
+func (kr *KimoRequest) FetchTCPProxyRecord(addr types.Addr, proxyRecords []*TCPProxyRecord) *TCPProxyRecord {
 	for _, pr := range proxyRecords {
 		if pr.ProxyOutput.Host == addr.Host && pr.ProxyOutput.Port == addr.Port {
 			return pr
@@ -61,11 +80,11 @@ func (kr *KimoRequest) Setup(ctx context.Context) error {
 
 	errC := make(chan error)
 
-	mysqlProcsC := make(chan []*types.MysqlProcess)
-	proxyRecordsC := make(chan []*types.TCPProxyRecord)
+	mysqlProcsC := make(chan []*MysqlProcess)
+	proxyRecordsC := make(chan []*TCPProxyRecord)
 
-	var mysqlProcesses []*types.MysqlProcess
-	var tcpProxyRecords []*types.TCPProxyRecord
+	var mysqlProcesses []*MysqlProcess
+	var tcpProxyRecords []*TCPProxyRecord
 
 	go kr.Mysql.FetchProcesses(ctx, mysqlProcsC, errC)
 	go kr.TCPProxy.FetchRecords(ctx, proxyRecordsC, errC)
@@ -99,7 +118,7 @@ func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) {
 }
 
 func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter) {
-	serverProcesses := make([]types.ServerProcess, 0)
+	serverProcesses := make([]ServerProcess, 0)
 	for _, kp := range kr.KimoProcesses {
 
 		ut, err := strconv.ParseUint(kp.MysqlProcess.Time, 10, 32)
@@ -108,7 +127,7 @@ func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter
 		}
 		t := uint32(ut)
 
-		serverProcesses = append(serverProcesses, types.ServerProcess{
+		serverProcesses = append(serverProcesses, ServerProcess{
 			ID:        kp.MysqlProcess.ID,
 			MysqlUser: kp.MysqlProcess.User,
 			DB:        kp.MysqlProcess.DB.String,
@@ -124,7 +143,7 @@ func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter
 
 	w.Header().Set("Content-Type", "application/json")
 
-	response := &types.KimoServerResponse{
+	response := &KimoServerResponse{
 		ServerProcesses: serverProcesses,
 	}
 	json.NewEncoder(w).Encode(response)

@@ -12,8 +12,8 @@ import (
 
 type KimoProcess struct {
 	DaemonProcess  *types.DaemonProcess
-	MysqlProcess   *types.MysqlProcess
-	TCPProxyRecord *types.TCPProxyRecord
+	MysqlProcess   *MysqlProcess
+	TCPProxyRecord *TCPProxyRecord
 	KimoRequest    *KimoRequest
 	Server         *Server
 }

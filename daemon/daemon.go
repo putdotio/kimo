@@ -100,7 +100,7 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 		}
 
 		dp = types.DaemonProcess{
-			Laddr:    conn.Laddr,
+			Laddr:    types.Addr{Host: conn.Laddr.IP, Port: conn.Laddr.Port},
 			Status:   conn.Status,
 			Pid:      conn.Pid,
 			Name:     name,
