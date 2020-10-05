@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"kimo/types"
-	"net/http"
 	"sync"
 	"time"
 
@@ -23,7 +22,7 @@ type KimoProcess struct {
 
 func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port uint32) (*types.DaemonProcess, error) {
 	// todo: use request with context
-	var httpClient = &http.Client{Timeout: 10 * time.Second}
+	var httpClient = NewHttpClient(1*time.Second, 4*time.Second)
 	url := fmt.Sprintf("http://%s:%d/conns?port=%d", host, kp.KimoRequest.Server.Config.DaemonPort, port)
 	kp.Logger.Debugf("Requesting to %s\n", url)
 	response, err := httpClient.Get(url)

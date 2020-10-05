@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"kimo/server"
 	"kimo/types"
 
 	"github.com/cenkalti/log"
@@ -21,10 +22,11 @@ type TCPProxy struct {
 	Logger      log.Logger
 }
 
+// todo: move everything under server package
 func NewTCPProxy(mgmtAddress string) *TCPProxy {
 	t := new(TCPProxy)
 	t.MgmtAddress = mgmtAddress
-	t.HttpClient = &http.Client{Timeout: 10 * time.Second}
+	t.HttpClient = server.NewHttpClient(1*time.Second, 2*time.Second)
 	return t
 }
 
