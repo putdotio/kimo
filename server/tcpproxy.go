@@ -38,7 +38,7 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*types.TC
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		t.Logger.Errorf("Error: %s\n", response.Status)
+		t.Logger.Debugf("Error: %s\n", response.Status)
 		errC <- errors.New("status code is not 200")
 		return
 	}

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"kimo/mysql"
 	"kimo/types"
 	"net/http"
 	"strconv"
@@ -11,7 +10,7 @@ import (
 )
 
 type KimoRequest struct {
-	Mysql         *mysql.Mysql
+	Mysql         *Mysql
 	Server        *Server
 	TCPProxy      *TCPProxy
 	DaemonPort    uint32
@@ -21,7 +20,7 @@ type KimoRequest struct {
 // todo: reconsider logger usages
 func (s *Server) NewKimoRequest() *KimoRequest {
 	kr := new(KimoRequest)
-	kr.Mysql = mysql.NewMysql(s.Config.DSN)
+	kr.Mysql = NewMysql(s.Config.DSN)
 	kr.Mysql.Logger = s.Logger
 	kr.TCPProxy = NewTCPProxy(s.Config.TCPProxyMgmtAddress, s.Config.TCPProxyConnectTimeout, s.Config.TCPProxyReadTimeout)
 	kr.TCPProxy.Logger = s.Logger
