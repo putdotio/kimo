@@ -4,22 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"kimo/mysql"
-	"kimo/tcpproxy"
 	"kimo/types"
 	"net/http"
 	"strconv"
 	"sync"
-
-	"github.com/cenkalti/log"
 )
 
 type KimoRequest struct {
 	Mysql         *mysql.Mysql
 	Server        *Server
-	TCPProxy      *tcpproxy.TCPProxy
+	TCPProxy      *TCPProxy
 	DaemonPort    uint32
 	KimoProcesses []*KimoProcess
-	Logger        log.Logger
 }
 
 // todo: reconsider logger usages
@@ -27,12 +23,11 @@ func (s *Server) NewKimoRequest() *KimoRequest {
 	kr := new(KimoRequest)
 	kr.Mysql = mysql.NewMysql(s.Config.DSN)
 	kr.Mysql.Logger = s.Logger
-	kr.TCPProxy = tcpproxy.NewTCPProxy(s.Config.TCPProxyMgmtAddress)
+	kr.TCPProxy = NewTCPProxy(s.Config.TCPProxyMgmtAddress, s.Config.TCPProxyConnectTimeout, s.Config.TCPProxyReadTimeout)
 	kr.TCPProxy.Logger = s.Logger
 	kr.DaemonPort = s.Config.DaemonPort
 	kr.KimoProcesses = make([]*KimoProcess, 0)
 	kr.Server = s
-	kr.Logger = s.Logger
 	return kr
 }
 
@@ -46,7 +41,7 @@ func (kr *KimoRequest) InitializeKimoProcesses(mps []*types.MysqlProcess, tprs [
 			MysqlProcess:   mp,
 			TCPProxyRecord: tpr,
 			KimoRequest:    kr,
-			Logger:         kr.Logger,
+			Server:         kr.Server,
 		})
 	}
 	return nil
@@ -85,7 +80,7 @@ func (kr *KimoRequest) Setup(ctx context.Context) error {
 		case tprs := <-proxyRecordsC:
 			tcpProxyRecords = tprs
 		case err := <-errC:
-			kr.Logger.Errorf("Error occured: %s", err.Error())
+			kr.Server.Logger.Errorf("Error occured: %s", err.Error())
 			cancel()
 			return err
 		case <-ctx.Done():
@@ -110,7 +105,7 @@ func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter
 
 		ut, err := strconv.ParseUint(kp.MysqlProcess.Time, 10, 32)
 		if err != nil {
-			kr.Logger.Errorf("time %s could not be converted to int", kp.MysqlProcess.Time)
+			kr.Server.Logger.Errorf("time %s could not be converted to int", kp.MysqlProcess.Time)
 		}
 		t := uint32(ut)
 

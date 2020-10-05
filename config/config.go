@@ -1,6 +1,10 @@
 package config
 
-import "github.com/BurntSushi/toml"
+import (
+	"time"
+
+	"github.com/BurntSushi/toml"
+)
 
 type Config struct {
 	Debug  bool `toml:"debug"`
@@ -9,10 +13,14 @@ type Config struct {
 }
 
 type Server struct {
-	DSN                 string `toml:"dsn"`
-	DaemonPort          uint32 `toml:"daemon_port"`
-	TCPProxyMgmtAddress string `toml:"tcpproxy_mgmt_address"`
-	ListenAddress       string `toml:"listen_address"`
+	DSN                    string        `toml:"dsn"`
+	DaemonPort             uint32        `toml:"daemon_port"`
+	TCPProxyMgmtAddress    string        `toml:"tcpproxy_mgmt_address"`
+	ListenAddress          string        `toml:"listen_address"`
+	DaemonConnectTimeout   time.Duration `toml:"daemon_connect_timeout"`
+	DaemonReadTimeout      time.Duration `toml:"daemon_read_timeout"`
+	TCPProxyConnectTimeout time.Duration `toml:"tcpproxy_connect_timeout"`
+	TCPProxyReadTimeout    time.Duration `toml:"tcpproxy_read_timeout"`
 }
 
 type Daemon struct {

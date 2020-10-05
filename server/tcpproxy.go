@@ -1,4 +1,4 @@
-package tcpproxy
+package server
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"kimo/server"
 	"kimo/types"
 
 	"github.com/cenkalti/log"
@@ -22,11 +21,10 @@ type TCPProxy struct {
 	Logger      log.Logger
 }
 
-// todo: move everything under server package
-func NewTCPProxy(mgmtAddress string) *TCPProxy {
+func NewTCPProxy(mgmtAddress string, connectTimeout, readTimeout time.Duration) *TCPProxy {
 	t := new(TCPProxy)
 	t.MgmtAddress = mgmtAddress
-	t.HttpClient = server.NewHttpClient(1*time.Second, 2*time.Second)
+	t.HttpClient = NewHttpClient(connectTimeout*time.Second, readTimeout*time.Second)
 	return t
 }
 
