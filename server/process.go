@@ -8,6 +8,8 @@ import (
 	"kimo/types"
 	"sync"
 	"time"
+
+	"github.com/cenkalti/log"
 )
 
 type KimoProcess struct {
@@ -22,14 +24,14 @@ func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port
 	// todo: use request with context
 	var httpClient = NewHttpClient(kp.Server.Config.DaemonConnectTimeout*time.Second, kp.Server.Config.DaemonReadTimeout*time.Second)
 	url := fmt.Sprintf("http://%s:%d/conns?port=%d", host, kp.KimoRequest.Server.Config.DaemonPort, port)
-	kp.Server.Logger.Debugf("Requesting to %s\n", url)
+	log.Debugf("Requesting to %s\n", url)
 	response, err := httpClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		kp.Server.Logger.Errorf("Error: %s -> %s\n", url, response.Status)
+		log.Debugf("Error: %s -> %s\n", url, response.Status)
 		return nil, errors.New("status code is not 200")
 	}
 
@@ -38,7 +40,7 @@ func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port
 
 	// todo: consider NotFound
 	if err != nil {
-		kp.Server.Logger.Errorln(err.Error())
+		log.Errorln(err.Error())
 		return nil, err
 	}
 

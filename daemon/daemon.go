@@ -16,32 +16,25 @@ import (
 func NewDaemon(cfg *config.Config) *Daemon {
 	d := new(Daemon)
 	d.Config = &cfg.Daemon
-	d.Logger = log.NewLogger("daemon")
-	if cfg.Debug {
-		d.Logger.SetLevel(log.DEBUG)
-	} else {
-		d.Logger.SetLevel(log.INFO)
-	}
 	return d
 }
 
 type Daemon struct {
 	Config *config.Daemon
-	Logger log.Logger
 }
 
 func (d *Daemon) parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	portParam, ok := req.URL.Query()["port"]
-	d.Logger.Infof("Looking for process of port: %s\n", portParam)
+	log.Infof("Looking for process of port: %s\n", portParam)
 
 	if !ok || len(portParam) < 1 {
-		d.Logger.Errorln("port param is not provided.")
+		log.Errorln("port param is not provided.")
 		return 0, nil
 	}
 
 	p, err := strconv.ParseInt(portParam[0], 10, 32)
 	if err != nil {
-		d.Logger.Errorln("error during string to int32: %s\n", err)
+		log.Errorln("error during string to int32: %s\n", err)
 		return 0, err
 	}
 	return uint32(p), nil
@@ -56,14 +49,14 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 	}
 	connections, err := gopsutilNet.Connections("all")
 	if err != nil {
-		d.Logger.Errorf("Error while getting connections: %s\n", err.Error())
+		log.Errorf("Error while getting connections: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	processes, err := gopsutilProcess.Processes()
 	if err != nil {
-		d.Logger.Errorf("Error while getting connections: %s\n", err.Error())
+		log.Errorf("Error while getting connections: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -76,11 +69,11 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 
 		process := d.findProcess(conn.Pid, processes)
 		if err != nil {
-			d.Logger.Debugf("Error occured while finding the process %s\n", err.Error())
+			log.Debugf("Error occured while finding the process %s\n", err.Error())
 			continue
 		}
 		if process == nil {
-			d.Logger.Debugf("Process could not found for %d\n", conn.Pid)
+			log.Debugf("Process could not found for %d\n", conn.Pid)
 			continue
 		}
 
@@ -90,12 +83,12 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 		}
 		cls, err := process.CmdlineSlice()
 		if err != nil {
-			d.Logger.Debugf("Cmdline could not found for %d\n", process.Pid)
+			log.Debugf("Cmdline could not found for %d\n", process.Pid)
 		}
 
 		hostname, err := os.Hostname()
 		if err != nil {
-			d.Logger.Errorf("Hostname could not found")
+			log.Errorf("Hostname could not found")
 			hostname = "UNKNOWN"
 		}
 
@@ -133,7 +126,7 @@ func (d *Daemon) Run() error {
 	http.HandleFunc("/conns", d.conns)
 	err := http.ListenAndServe(d.Config.ListenAddress, nil)
 	if err != nil {
-		d.Logger.Errorln(err.Error())
+		log.Errorln(err.Error())
 		return err
 	}
 	return nil

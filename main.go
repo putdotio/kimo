@@ -27,6 +27,10 @@ func main() {
 			Name:  "debug, d",
 			Usage: "enable debug log",
 		},
+		cli.BoolFlag{
+			Name:  "no-debug, D",
+			Usage: "disable debug log",
+		},
 	}
 	app.Before = func(c *cli.Context) error {
 		err := cfg.ReadFile(c.GlobalString("config"))
@@ -35,9 +39,17 @@ func main() {
 		}
 		if c.IsSet("debug") {
 			cfg.Debug = true
-		} else {
+		}
+		if c.IsSet("no-debug") {
 			cfg.Debug = false
 		}
+
+		if cfg.Debug {
+			log.SetLevel(log.DEBUG)
+		} else {
+			log.SetLevel(log.INFO)
+		}
+
 		return nil
 	}
 	app.Commands = []cli.Command{

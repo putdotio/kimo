@@ -33,7 +33,6 @@ func NewMysql(dsn string) *Mysql {
 type Mysql struct {
 	DSN       string
 	Processes []MysqlProcess
-	Logger    log.Logger
 }
 
 func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProcess, errC chan<- error) {
@@ -65,7 +64,7 @@ func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProces
 		}
 		parsedPort, err := strconv.ParseInt(s[1], 10, 32)
 		if err != nil {
-			m.Logger.Errorf("error during string to int32: %s\n", err)
+			log.Errorf("error during string to int32: %s\n", err)
 			continue
 		}
 		mp.Address = types.Addr{

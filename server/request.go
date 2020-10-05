@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+
+	"github.com/cenkalti/log"
 )
 
 // KimoServerResponse is type for returning a response from kimo server
@@ -36,13 +38,10 @@ type KimoRequest struct {
 	KimoProcesses []*KimoProcess
 }
 
-// todo: reconsider logger usages
 func (s *Server) NewKimoRequest() *KimoRequest {
 	kr := new(KimoRequest)
 	kr.Mysql = NewMysql(s.Config.DSN)
-	kr.Mysql.Logger = s.Logger
 	kr.TCPProxy = NewTCPProxy(s.Config.TCPProxyMgmtAddress, s.Config.TCPProxyConnectTimeout, s.Config.TCPProxyReadTimeout)
-	kr.TCPProxy.Logger = s.Logger
 	kr.DaemonPort = s.Config.DaemonPort
 	kr.KimoProcesses = make([]*KimoProcess, 0)
 	kr.Server = s
@@ -98,7 +97,7 @@ func (kr *KimoRequest) Setup(ctx context.Context) error {
 		case tprs := <-proxyRecordsC:
 			tcpProxyRecords = tprs
 		case err := <-errC:
-			kr.Server.Logger.Errorf("Error occured: %s", err.Error())
+			log.Errorf("Error occured: %s", err.Error())
 			cancel()
 			return err
 		case <-ctx.Done():
@@ -123,7 +122,7 @@ func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter
 
 		ut, err := strconv.ParseUint(kp.MysqlProcess.Time, 10, 32)
 		if err != nil {
-			kr.Server.Logger.Errorf("time %s could not be converted to int", kp.MysqlProcess.Time)
+			log.Errorf("time %s could not be converted to int", kp.MysqlProcess.Time)
 		}
 		t := uint32(ut)
 
