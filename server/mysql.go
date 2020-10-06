@@ -20,7 +20,7 @@ type MysqlProcess struct {
 	Time    string         `json:"time"`
 	State   sql.NullString `json:"state"`
 	Info    sql.NullString `json:"info"`
-	Address types.Addr     `json:"address"`
+	Address types.IPPort   `json:"address"`
 }
 
 // todo: DRY. too much duplicated codes inside New.. functions
@@ -68,8 +68,8 @@ func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProces
 			log.Errorf("error during string to int32: %s\n", err)
 			continue
 		}
-		mp.Address = types.Addr{
-			Host: s[0],
+		mp.Address = types.IPPort{
+			IP:   s[0],
 			Port: uint32(parsedPort),
 		}
 		mps = append(mps, &mp)

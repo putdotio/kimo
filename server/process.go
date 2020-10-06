@@ -53,10 +53,10 @@ func (kp *KimoProcess) SetDaemonProcess(ctx context.Context, wg *sync.WaitGroup)
 	var port uint32
 
 	if kp.TCPProxyRecord != nil {
-		host = kp.TCPProxyRecord.ClientOutput.Host
-		port = kp.TCPProxyRecord.ClientOutput.Port
+		host = kp.TCPProxyRecord.ClientOut.IP
+		port = kp.TCPProxyRecord.ClientOut.Port
 	} else {
-		host = kp.MysqlProcess.Address.Host
+		host = kp.MysqlProcess.Address.IP
 		port = kp.MysqlProcess.Address.Port
 	}
 	dp, err := kp.FetchDaemonProcess(ctx, host, port)

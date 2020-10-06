@@ -2,13 +2,11 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"kimo/types"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cenkalti/log"
@@ -16,11 +14,16 @@ import (
 
 // TCPProxyRecord is type for defining a connection through TCP Proxy to MySQL
 type TCPProxyRecord struct {
-	ProxyInput   types.Addr
-	ProxyOutput  types.Addr
-	MysqlInput   types.Addr
-	ClientOutput types.Addr
+	ClientOut types.IPPort `json:"client_out"`
+	ProxyIn   types.IPPort `json:"proxy_in"`
+	ProxyOut  types.IPPort `json:"proxy_out"`
+	ServerIn  types.IPPort `json:"server_in"`
 }
+
+type TCPConns struct {
+	Records []*TCPProxyRecord `json:"conns"`
+}
+
 type TCPProxy struct {
 	MgmtAddress string
 	HttpClient  *http.Client
@@ -34,7 +37,7 @@ func NewTCPProxy(mgmtAddress string, connectTimeout, readTimeout time.Duration) 
 }
 
 func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*TCPProxyRecord, errC chan<- error) {
-	url := fmt.Sprintf("http://%s/conns", t.MgmtAddress)
+	url := fmt.Sprintf("http://%s/conns?json=true", t.MgmtAddress)
 	log.Infof("Requesting to tcpproxy %s\n", url)
 	response, err := t.HttpClient.Get(url)
 	if err != nil {
@@ -48,67 +51,8 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*TCPProxy
 		return
 	}
 
-	// Read all the response body
-	contents, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Errorln(err.Error())
-		errC <- err
-		return
-	}
-
-	parsedContents := strings.Split(string(contents), "\n")
-
-	records := make([]*TCPProxyRecord, 0)
-	for _, record := range parsedContents {
-		addr, err := t.parseRecord(record)
-		if err != nil {
-			log.Debugf("record '%s' could not be parsed \n", record)
-			continue
-		}
-		records = append(records, addr)
-	}
-	log.Infof("Got %d TCP proxy records \n", len(records))
-	recordsC <- records
-}
-
-func (t *TCPProxy) parseRecord(record string) (*TCPProxyRecord, error) {
-	// Sample Output:
-	// 10.0.4.219:36149 -> 10.0.0.68:3306 -> 10.0.0.68:35423 -> 10.0.0.241:3306
-	// <client>:<output_port> -> <proxy>:<input_port> -> <proxy>:<output_port>: -> <mysql>:<input_port>
-	record = strings.TrimSpace(record)
-	items := strings.Split(record, "->")
-	var tcpAddr TCPProxyRecord
-	for idx, item := range items {
-		parts := strings.Split(strings.TrimSpace(item), ":")
-		if len(parts) < 2 {
-			return nil, errors.New("unknown")
-		}
-
-		p, err := strconv.ParseInt(parts[1], 10, 32)
-		if err != nil {
-			log.Errorf("error during string to int32: %s\n", err)
-			return nil, err
-		}
-
-		ip := parts[0]
-		port := uint32(p)
-
-		if idx == 0 {
-			tcpAddr.ClientOutput.Host = ip
-			tcpAddr.ClientOutput.Port = port
-		} else if idx == 1 {
-			tcpAddr.ProxyInput.Host = ip
-			tcpAddr.ProxyInput.Port = port
-		} else if idx == 2 {
-			tcpAddr.ProxyOutput.Host = ip
-			tcpAddr.ProxyOutput.Port = port
-		} else if idx == 3 {
-			tcpAddr.MysqlInput.Host = ip
-			tcpAddr.MysqlInput.Port = port
-		} else {
-			return nil, errors.New("unknown")
-		}
-	}
-
-	return &tcpAddr, nil
+	var conns TCPConns
+	err = json.NewDecoder(response.Body).Decode(&conns)
+	log.Infof("Got %d TCP proxy records \n", len(conns.Records))
+	recordsC <- conns.Records
 }

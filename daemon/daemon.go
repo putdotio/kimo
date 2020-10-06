@@ -86,7 +86,7 @@ func (d *Daemon) Process(w http.ResponseWriter, req *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(types.DaemonProcess{
-			Laddr:    types.Addr{Host: conn.Laddr.IP, Port: conn.Laddr.Port},
+			Laddr:    types.IPPort{IP: conn.Laddr.IP, Port: conn.Laddr.Port},
 			Status:   conn.Status,
 			Pid:      conn.Pid,
 			Name:     name,

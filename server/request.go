@@ -77,15 +77,15 @@ func findHostIP(host string) (string, error) {
 	return ip.String(), nil
 }
 
-func (kr *KimoRequest) findTCPProxyRecord(addr types.Addr, proxyRecords []*TCPProxyRecord) *TCPProxyRecord {
-	ipAddr, err := findHostIP(addr.Host)
+func (kr *KimoRequest) findTCPProxyRecord(addr types.IPPort, proxyRecords []*TCPProxyRecord) *TCPProxyRecord {
+	ipAddr, err := findHostIP(addr.IP)
 	if err != nil {
 		log.Debugln(err.Error())
 		return nil
 	}
 
 	for _, pr := range proxyRecords {
-		if pr.ProxyOutput.Host == ipAddr && pr.ProxyOutput.Port == addr.Port {
+		if pr.ProxyOut.IP == ipAddr && pr.ProxyOut.Port == addr.Port {
 			return pr
 		}
 	}
