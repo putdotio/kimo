@@ -60,7 +60,11 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	dp := types.DaemonProcess{}
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Errorf("Hostname could not found")
+		hostname = "UNKNOWN"
+	}
 
 	for _, conn := range connections {
 		if conn.Laddr.Port != port {
@@ -86,30 +90,19 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 			log.Debugf("Cmdline could not found for %d\n", process.Pid)
 		}
 
-		hostname, err := os.Hostname()
-		if err != nil {
-			log.Errorf("Hostname could not found")
-			hostname = "UNKNOWN"
-		}
-
-		dp = types.DaemonProcess{
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(types.DaemonProcess{
 			Laddr:    types.Addr{Host: conn.Laddr.IP, Port: conn.Laddr.Port},
 			Status:   conn.Status,
 			Pid:      conn.Pid,
 			Name:     name,
 			CmdLine:  cls,
 			Hostname: hostname,
-		}
-		break
-	}
-	w.Header().Set("Content-Type", "application/json")
-
-	if dp.IsEmpty() {
-		http.Error(w, "process not found!", http.StatusNotFound)
+		})
 		return
 	}
-	json.NewEncoder(w).Encode(&dp)
-
+	http.Error(w, "process not found!", http.StatusNotFound)
+	return
 }
 
 func (d *Daemon) findProcess(pid int32, processes []*gopsutilProcess.Process) *gopsutilProcess.Process {

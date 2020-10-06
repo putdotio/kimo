@@ -15,11 +15,3 @@ type DaemonProcess struct {
 	Hostname string   `json:"hostname"`
 	CmdLine  []string `json:"cmdline"`
 }
-
-// IsEmpty is used for determining whether a DaemonProcess has really a process information or not.
-func (dp *DaemonProcess) IsEmpty() bool {
-	if dp.Pid > 0 {
-		return false
-	}
-	return true
-}
