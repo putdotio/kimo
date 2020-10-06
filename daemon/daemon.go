@@ -40,7 +40,7 @@ func (d *Daemon) parsePortParam(w http.ResponseWriter, req *http.Request) (uint3
 	return uint32(p), nil
 }
 
-func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
+func (d *Daemon) Process(w http.ResponseWriter, req *http.Request) {
 	// todo: cache result for a short period (10s? 30s?)
 	port, err := d.parsePortParam(w, req)
 	if err != nil {
@@ -100,7 +100,7 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 }
 
 func (d *Daemon) Run() error {
-	http.HandleFunc("/conns", d.conns)
+	http.HandleFunc("/proc", d.Process)
 	err := http.ListenAndServe(d.Config.ListenAddress, nil)
 	if err != nil {
 		log.Errorln(err.Error())
