@@ -67,6 +67,7 @@ func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*TCPProxy
 		}
 		records = append(records, addr)
 	}
+	log.Infof("Got %d TCP proxy records \n", len(records))
 	recordsC <- records
 }
 

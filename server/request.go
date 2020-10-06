@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"kimo/types"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -50,7 +51,7 @@ func (s *Server) NewKimoRequest() *KimoRequest {
 
 func (kr *KimoRequest) InitializeKimoProcesses(mps []*MysqlProcess, tprs []*TCPProxyRecord) error {
 	for _, mp := range mps {
-		tpr := kr.FetchTCPProxyRecord(mp.Address, tprs)
+		tpr := kr.findTCPProxyRecord(mp.Address, tprs)
 		if tpr == nil {
 			continue
 		}
@@ -64,9 +65,27 @@ func (kr *KimoRequest) InitializeKimoProcesses(mps []*MysqlProcess, tprs []*TCPP
 	return nil
 }
 
-func (kr *KimoRequest) FetchTCPProxyRecord(addr types.Addr, proxyRecords []*TCPProxyRecord) *TCPProxyRecord {
+func findHostIP(host string) (string, error) {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return "", err
+		}
+		return string(ips[0].String()), nil
+	}
+	return ip.String(), nil
+}
+
+func (kr *KimoRequest) findTCPProxyRecord(addr types.Addr, proxyRecords []*TCPProxyRecord) *TCPProxyRecord {
+	ipAddr, err := findHostIP(addr.Host)
+	if err != nil {
+		log.Debugln(err.Error())
+		return nil
+	}
+
 	for _, pr := range proxyRecords {
-		if pr.ProxyOutput.Host == addr.Host && pr.ProxyOutput.Port == addr.Port {
+		if pr.ProxyOutput.Host == ipAddr && pr.ProxyOutput.Port == addr.Port {
 			return pr
 		}
 	}
@@ -108,6 +127,7 @@ func (kr *KimoRequest) Setup(ctx context.Context) error {
 }
 
 func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) {
+	log.Infof("Generating %d kimo processes...\n", len(kr.KimoProcesses))
 	var wg sync.WaitGroup
 	for _, kp := range kr.KimoProcesses {
 		wg.Add(1)
@@ -117,6 +137,7 @@ func (kr *KimoRequest) GenerateKimoProcesses(ctx context.Context) {
 }
 
 func (kr *KimoRequest) ReturnResponse(ctx context.Context, w http.ResponseWriter) {
+	log.Infof("Returning response with %d kimo processes...\n", len(kr.KimoProcesses))
 	serverProcesses := make([]ServerProcess, 0)
 	for _, kp := range kr.KimoProcesses {
 

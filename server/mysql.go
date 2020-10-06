@@ -74,5 +74,6 @@ func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProces
 		}
 		mps = append(mps, &mp)
 	}
+	log.Infof("Got %d mysql processes \n", len(mps))
 	procsC <- mps
 }

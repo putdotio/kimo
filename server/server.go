@@ -33,9 +33,7 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Infoln("Generating kimo processes...")
 	kr.GenerateKimoProcesses(ctx)
-	log.Infoln("Returning response...")
 	kr.ReturnResponse(ctx, w)
 
 }
