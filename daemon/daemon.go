@@ -54,12 +54,6 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	processes, err := gopsutilProcess.Processes()
-	if err != nil {
-		log.Errorf("Error while getting connections: %s\n", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	hostname, err := os.Hostname()
 	if err != nil {
 		log.Errorf("Hostname could not found")
@@ -71,7 +65,7 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		process := d.findProcess(conn.Pid, processes)
+		process, err := gopsutilProcess.NewProcess(conn.Pid)
 		if err != nil {
 			log.Debugf("Error occured while finding the process %s\n", err.Error())
 			continue
@@ -103,16 +97,6 @@ func (d *Daemon) conns(w http.ResponseWriter, req *http.Request) {
 	}
 	http.Error(w, "process not found!", http.StatusNotFound)
 	return
-}
-
-func (d *Daemon) findProcess(pid int32, processes []*gopsutilProcess.Process) *gopsutilProcess.Process {
-	for _, process := range processes {
-		if process.Pid == pid {
-			return process
-		}
-	}
-	return nil
-
 }
 
 func (d *Daemon) Run() error {
