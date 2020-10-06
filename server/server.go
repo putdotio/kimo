@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/log"
-	_ "github.com/go-sql-driver/mysql"
 )
 
+// NewServer is used to create a new Server type
 func NewServer(cfg *config.Config) *Server {
 	s := new(Server)
 	s.Config = &cfg.Server
@@ -18,10 +18,12 @@ func NewServer(cfg *config.Config) *Server {
 	return s
 }
 
+// Server is a type for handling server side
 type Server struct {
 	Config *config.Server
 }
 
+// Processes is a handler for returning process list
 func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "access-control-allow-origin, access-control-allow-headers")
@@ -41,11 +43,13 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// Health is a dummy endpoint for load balancer health check
 func (s *Server) Health(w http.ResponseWriter, req *http.Request) {
 	// todo: real health check
 	fmt.Fprintf(w, "OK")
 }
 
+// Run is used to run http handlers
 func (s *Server) Run() error {
 	log.Infof("Running server on %s \n", s.Config.ListenAddress)
 	http.HandleFunc("/procs", s.Processes)

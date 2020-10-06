@@ -20,26 +20,30 @@ type TCPProxyRecord struct {
 	ServerIn  types.IPPort `json:"server_in"`
 }
 
+// TCPConns is a type for TCP Proxy management api response
 type TCPConns struct {
 	Records []*TCPProxyRecord `json:"conns"`
 }
 
+// TCPProxy is used for getting info from tcp proxy
 type TCPProxy struct {
 	MgmtAddress string
-	HttpClient  *http.Client
+	HTTPClient  *http.Client
 }
 
+// NewTCPProxy is used to create a new TCPProxy
 func NewTCPProxy(mgmtAddress string, connectTimeout, readTimeout time.Duration) *TCPProxy {
 	t := new(TCPProxy)
 	t.MgmtAddress = mgmtAddress
-	t.HttpClient = NewHttpClient(connectTimeout*time.Second, readTimeout*time.Second)
+	t.HTTPClient = NewHTTPClient(connectTimeout*time.Second, readTimeout*time.Second)
 	return t
 }
 
+// FetchRecords is used to fetch connection records from tcp proxy.
 func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*TCPProxyRecord, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns?json=true", t.MgmtAddress)
 	log.Infof("Requesting to tcpproxy %s\n", url)
-	response, err := t.HttpClient.Get(url)
+	response, err := t.HTTPClient.Get(url)
 	if err != nil {
 		errC <- err
 		return

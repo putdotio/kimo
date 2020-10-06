@@ -12,6 +12,7 @@ import (
 	"github.com/cenkalti/log"
 )
 
+// KimoProcess is combined with processes from mysql to daemon through tcpproxy
 type KimoProcess struct {
 	DaemonProcess  *types.DaemonProcess
 	MysqlProcess   *MysqlProcess
@@ -20,9 +21,10 @@ type KimoProcess struct {
 	Server         *Server
 }
 
+// FetchDaemonProcess is used to fetch process information a daemon
 func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port uint32) (*types.DaemonProcess, error) {
 	// todo: use request with context
-	var httpClient = NewHttpClient(kp.Server.Config.DaemonConnectTimeout*time.Second, kp.Server.Config.DaemonReadTimeout*time.Second)
+	var httpClient = NewHTTPClient(kp.Server.Config.DaemonConnectTimeout*time.Second, kp.Server.Config.DaemonReadTimeout*time.Second)
 	url := fmt.Sprintf("http://%s:%d/proc?port=%d", host, kp.KimoRequest.Server.Config.DaemonPort, port)
 	log.Debugf("Requesting to %s\n", url)
 	response, err := httpClient.Get(url)
@@ -47,6 +49,7 @@ func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port
 	return &dp, nil
 }
 
+// SetDaemonProcess is used to set daemon process of a KimoProcess
 func (kp *KimoProcess) SetDaemonProcess(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var host string

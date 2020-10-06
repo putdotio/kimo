@@ -6,7 +6,8 @@ import (
 	"time"
 )
 
-func NewHttpClient(connectTimeout, readTimeout time.Duration) *http.Client {
+// NewHTTPClient returns a http client with custom connect & read timeout
+func NewHTTPClient(connectTimeout, readTimeout time.Duration) *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			Dial: TimeoutDialer(connectTimeout, readTimeout),
@@ -14,6 +15,7 @@ func NewHttpClient(connectTimeout, readTimeout time.Duration) *http.Client {
 	}
 }
 
+// TimeoutDialer is used to set connect & read timeouts for the client
 func TimeoutDialer(connectTimeout, readTimeout time.Duration) func(net, addr string) (c net.Conn, err error) {
 	return func(netw, addr string) (net.Conn, error) {
 		conn, err := net.DialTimeout(netw, addr, connectTimeout)

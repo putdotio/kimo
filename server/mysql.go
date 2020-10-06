@@ -23,18 +23,20 @@ type MysqlProcess struct {
 	Address types.IPPort   `json:"address"`
 }
 
-// todo: DRY. too much duplicated codes inside New.. functions
+// NewMysql is used to create a Mysql type.
 func NewMysql(dsn string) *Mysql {
 	m := new(Mysql)
 	m.DSN = dsn
 	return m
 }
 
+// Mysql is used to get processes from mysql.
 type Mysql struct {
 	DSN       string
 	Processes []MysqlProcess
 }
 
+// FetchProcesses is used to fetch processlist table from information_schema.
 func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProcess, errC chan<- error) {
 	log.Infoln("Requesting to mysql...")
 	db, err := sql.Open("mysql", m.DSN)
