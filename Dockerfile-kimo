@@ -3,10 +3,13 @@ FROM golang:1.13
 RUN apt-get update && apt-get -y install default-mysql-client
 
 RUN mkdir /go/src/kimo
-COPY . /go/src/kimo
+COPY go.mod go.sum /go/src/kimo/
+COPY ./server/static/ /go/src/kimo/server/static
 
 RUN go get github.com/rakyll/statik
 RUN cd /go/src/kimo && statik -src=./server/static -include='*.html'
+
+COPY . /go/src/kimo
 RUN cd /go/src/kimo && go install
 
 ADD config.toml /etc/kimo.toml
