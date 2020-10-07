@@ -12,7 +12,6 @@
             fetch('/procs')
                 .then(d => d.json())
                 .then(d => {
-                    console.log(d)
                     var table = new Tabulator('#procs', {
                         data: d.processes,
                         height: 800,
@@ -20,8 +19,17 @@
                         pagination: 'local',
                         paginationSize: 50,
                         paginationSizeSelector: [50, 100, 250, 500],
+                        footerElement: '<div>Filtered: <span id="filtered">..</span>/<span id="total">' + d.processes.length + '</span></div>',
+                        dataFiltered: function(filters, rows){
+                            var element = document.getElementById("filtered");
+                            element.innerHTML = rows.length;
+                        },
+                        dataLoad: function(filters, rows){
+                            var element = document.getElementById("total");
+                            element.innerHTML = data.length;
+                        },
                         columns: [
-                            { field: 'id', title: 'ID' , sorter: 'number', headerFilter: 'input', headerSortStartingDir: 'asc'},
+                            { field: 'id', title: 'ID' , sorter: 'number', headerFilter: 'input', headerSortStartingDir: 'asc' },
                             { field: 'mysql_user', title: 'User', sorter: 'string', headerFilter: 'input' },
                             { field: 'db', title: 'DB', headerFilter: 'input' },
                             { field: 'command', title: 'Command', headerFilter:'input' },
@@ -32,7 +40,7 @@
                     });
                 })
                 .catch((e) => {
-                    console.log(e)
+                    console.log(e.toString())
                 })
         }
         document.addEventListener('DOMContentLoaded', function() {
