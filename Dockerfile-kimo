@@ -6,7 +6,6 @@ RUN mkdir /go/src/kimo
 COPY . /go/src/kimo
 
 RUN go get github.com/rakyll/statik
-RUN ls -al /go/
 RUN cd /go/src/kimo && statik -src=./server/static -include='*.html'
 RUN cd /go/src/kimo && go install
 
