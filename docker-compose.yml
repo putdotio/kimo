@@ -42,7 +42,7 @@ services:
   kimo-server:
     image: kimo-server
     container_name: kimo-server
-    entrypoint: /go/src/kimo/kimo --debug server
+    entrypoint: kimo --debug server
     ports:
       - "3322:3322"
     build:

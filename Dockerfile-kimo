@@ -4,7 +4,10 @@ RUN apt-get update && apt-get -y install default-mysql-client
 
 RUN mkdir /go/src/kimo
 COPY . /go/src/kimo
-RUN cd /go/src/kimo && go mod vendor && go build
 
+RUN go get github.com/rakyll/statik
+RUN ls -al /go/
+RUN cd /go/src/kimo && statik -src=./server/static -include='*.html'
+RUN cd /go/src/kimo && go install
 
 ADD config.toml /etc/kimo.toml

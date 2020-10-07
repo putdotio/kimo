@@ -1,9 +1,12 @@
 NAME := kimo
+GOPATH=$(shell go env GOPATH)
+export GOPATH
 
 build:
 	go mod download
-	go build -o $(NAME)
-
+	go get github.com/rakyll/statik
+	$(GOPATH)/bin/statik -src=./server/static -include='*.html'
+	go install
 up:
 	docker-compose stop
 	docker-compose rm -fsv

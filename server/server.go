@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/log"
-	"github.com/gobuffalo/packr"
+	"github.com/rakyll/statik/fs"
+
+	_ "kimo/statik" // Auto-generated module by statik.
 )
 
 // NewServer is used to create a new Server type
@@ -50,22 +52,21 @@ func (s *Server) Health(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "OK")
 }
 
-// Index serves index.html file
-func (s *Server) Index(w http.ResponseWriter, req *http.Request) {
-	box := packr.NewBox("./static")
-
-	content, err := box.Find("index.html")
+// Static serves static files (web components).
+func (s *Server) Static() http.Handler {
+	statikFS, err := fs.New()
 	if err != nil {
 		log.Errorln(err)
 	}
-	w.Write(content)
+	return http.FileServer(statikFS)
+
 }
 
 // Run is used to run http handlers
 func (s *Server) Run() error {
 	log.Infof("Running server on %s \n", s.Config.ListenAddress)
 
-	http.HandleFunc("/", s.Index)
+	http.Handle("/", s.Static())
 	http.HandleFunc("/procs", s.Processes)
 	http.HandleFunc("/health", s.Health)
 	err := http.ListenAndServe(s.Config.ListenAddress, nil)
