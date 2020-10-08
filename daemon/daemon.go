@@ -25,7 +25,7 @@ type Daemon struct {
 
 func (d *Daemon) parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	portParam, ok := req.URL.Query()["port"]
-	log.Infof("Looking for process of port: %s\n", portParam)
+	log.Debugf("Looking for process of port: %s\n", portParam)
 
 	if !ok || len(portParam) < 1 {
 		log.Errorln("port param is not provided.")

@@ -17,7 +17,6 @@ type KimoProcess struct {
 	DaemonProcess  *types.DaemonProcess
 	MysqlProcess   *MysqlProcess
 	TCPProxyRecord *TCPProxyRecord
-	KimoRequest    *KimoRequest
 	Server         *Server
 }
 
@@ -25,7 +24,7 @@ type KimoProcess struct {
 func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port uint32) (*types.DaemonProcess, error) {
 	// todo: use request with context
 	var httpClient = NewHTTPClient(kp.Server.Config.DaemonConnectTimeout*time.Second, kp.Server.Config.DaemonReadTimeout*time.Second)
-	url := fmt.Sprintf("http://%s:%d/proc?port=%d", host, kp.KimoRequest.Server.Config.DaemonPort, port)
+	url := fmt.Sprintf("http://%s:%d/proc?port=%d", host, kp.Server.Config.DaemonPort, port)
 	log.Debugf("Requesting to %s\n", url)
 	response, err := httpClient.Get(url)
 	if err != nil {

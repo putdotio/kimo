@@ -50,6 +50,11 @@ func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProces
 	if err != nil {
 		errC <- err
 	}
+
+	if results == nil {
+		return
+	}
+
 	mps := make([]*MysqlProcess, 0)
 	for results.Next() {
 		var mp MysqlProcess
