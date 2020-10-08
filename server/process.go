@@ -12,19 +12,19 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// KimoProcess is combined with processes from mysql to daemon through tcpproxy
+// KimoProcess is combined with processes from mysql to agent through tcpproxy
 type KimoProcess struct {
-	DaemonProcess  *types.DaemonProcess
+	AgentProcess   *types.AgentProcess
 	MysqlProcess   *MysqlProcess
 	TCPProxyRecord *TCPProxyRecord
 	Server         *Server
 }
 
-// FetchDaemonProcess is used to fetch process information a daemon
-func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port uint32) (*types.DaemonProcess, error) {
+// FetchAgentProcess is used to fetch process information an agent
+func (kp *KimoProcess) FetchAgentProcess(ctx context.Context, host string, port uint32) (*types.AgentProcess, error) {
 	// todo: use request with context
-	var httpClient = NewHTTPClient(kp.Server.Config.DaemonConnectTimeout*time.Second, kp.Server.Config.DaemonReadTimeout*time.Second)
-	url := fmt.Sprintf("http://%s:%d/proc?port=%d", host, kp.Server.Config.DaemonPort, port)
+	var httpClient = NewHTTPClient(kp.Server.Config.AgentConnectTimeout*time.Second, kp.Server.Config.AgentReadTimeout*time.Second)
+	url := fmt.Sprintf("http://%s:%d/proc?port=%d", host, kp.Server.Config.AgentPort, port)
 	log.Debugf("Requesting to %s\n", url)
 	response, err := httpClient.Get(url)
 	if err != nil {
@@ -36,7 +36,7 @@ func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port
 		return nil, errors.New("status code is not 200")
 	}
 
-	dp := types.DaemonProcess{}
+	dp := types.AgentProcess{}
 	err = json.NewDecoder(response.Body).Decode(&dp)
 
 	// todo: consider NotFound
@@ -48,8 +48,8 @@ func (kp *KimoProcess) FetchDaemonProcess(ctx context.Context, host string, port
 	return &dp, nil
 }
 
-// SetDaemonProcess is used to set daemon process of a KimoProcess
-func (kp *KimoProcess) SetDaemonProcess(ctx context.Context, wg *sync.WaitGroup) {
+// SetAgentProcess is used to set agent process of a KimoProcess
+func (kp *KimoProcess) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var host string
 	var port uint32
@@ -61,10 +61,10 @@ func (kp *KimoProcess) SetDaemonProcess(ctx context.Context, wg *sync.WaitGroup)
 		host = kp.MysqlProcess.Address.IP
 		port = kp.MysqlProcess.Address.Port
 	}
-	dp, err := kp.FetchDaemonProcess(ctx, host, port)
+	dp, err := kp.FetchAgentProcess(ctx, host, port)
 	if err != nil {
-		kp.DaemonProcess = &types.DaemonProcess{}
+		kp.AgentProcess = &types.AgentProcess{}
 	} else {
-		kp.DaemonProcess = dp
+		kp.AgentProcess = dp
 	}
 }

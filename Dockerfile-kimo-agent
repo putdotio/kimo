@@ -1,0 +1,5 @@
+FROM kimo
+ADD kimo-agent-entrypoint.sh /tmp/
+
+ENTRYPOINT ["bash", "/tmp/kimo-agent-entrypoint.sh"]
+EXPOSE 3303

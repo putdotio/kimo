@@ -1,13 +1,13 @@
 debug = true
-[daemon]
+[agent]
 listen_address = "0.0.0.0:3333"
 [server]
 dsn = "kimo:123@(mysql:3306)/information_schema"
 listen_address = "0.0.0.0:3322"
 poll_duration = 10
-daemon_port = 3333
+agent_port = 3333
 tcpproxy_mgmt_address = "tcpproxy:3307"
-daemon_connect_timeout = 1000
-daemon_read_timeout = 4000
+agent_connect_timeout = 1000
+agent_read_timeout = 4000
 tcpproxy_connect_timeout = 1000
 tcpproxy_read_timeout = 2000

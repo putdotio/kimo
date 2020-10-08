@@ -1,8 +1,8 @@
 package main
 
 import (
+	"kimo/agent"
 	"kimo/config"
-	"kimo/daemon"
 	"kimo/server"
 	"os"
 
@@ -54,11 +54,11 @@ func main() {
 	}
 	app.Commands = []cli.Command{
 		{
-			Name:  "daemon",
-			Usage: "run daemon",
+			Name:  "agent",
+			Usage: "run agent",
 			Action: func(c *cli.Context) error {
-				kimoDaemon := daemon.NewDaemon(cfg)
-				err := kimoDaemon.Run()
+				kimoAgent := agent.NewAgent(cfg)
+				err := kimoAgent.Run()
 				if err != nil {
 					return err
 				}

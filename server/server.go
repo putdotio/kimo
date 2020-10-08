@@ -23,7 +23,7 @@ type Response struct {
 	Processes []Process `json:"processes"`
 }
 
-// Process is the final processes that is combined with DaemonProcess + TCPProxyRecord + MysqlProcess
+// Process is the final processes that is combined with AgentProcess + TCPProxyRecord + MysqlProcess
 type Process struct {
 	ID        int32    `json:"id"`
 	MysqlUser string   `json:"mysql_user"`
@@ -117,13 +117,13 @@ func (s *Server) Init(ctx context.Context) error {
 
 }
 
-// GenerateKimoProcesses is used to combine all information (mysql + tcpproxy + daemon) of a process
+// GenerateKimoProcesses is used to combine all information (mysql + tcpproxy + agent) of a process
 func (s *Server) GenerateKimoProcesses(ctx context.Context) {
 	log.Infof("Generating %d kimo processes...\n", len(s.KimoProcesses))
 	var wg sync.WaitGroup
 	for _, kp := range s.KimoProcesses {
 		wg.Add(1)
-		go kp.SetDaemonProcess(ctx, &wg)
+		go kp.SetAgentProcess(ctx, &wg)
 	}
 	wg.Wait()
 	log.Infoln("Generating process is done...")
@@ -150,9 +150,9 @@ func (s *Server) ReturnResponse(ctx context.Context, w http.ResponseWriter) {
 			Time:      t,
 			State:     kp.MysqlProcess.State.String,
 			Info:      kp.MysqlProcess.Info.String,
-			CmdLine:   kp.DaemonProcess.CmdLine,
-			Pid:       kp.DaemonProcess.Pid,
-			Host:      kp.DaemonProcess.Hostname,
+			CmdLine:   kp.AgentProcess.CmdLine,
+			Pid:       kp.AgentProcess.Pid,
+			Host:      kp.AgentProcess.Hostname,
 		})
 	}
 

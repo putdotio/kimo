@@ -1,4 +1,4 @@
-package daemon
+package agent
 
 import (
 	"encoding/json"
@@ -13,17 +13,19 @@ import (
 	gopsutilProcess "github.com/shirou/gopsutil/process"
 )
 
-func NewDaemon(cfg *config.Config) *Daemon {
-	d := new(Daemon)
-	d.Config = &cfg.Daemon
+// NewAgent is constuctor function for Agent type
+func NewAgent(cfg *config.Config) *Agent {
+	d := new(Agent)
+	d.Config = &cfg.Agent
 	return d
 }
 
-type Daemon struct {
-	Config *config.Daemon
+// Agent is type for handling agent operations
+type Agent struct {
+	Config *config.Agent
 }
 
-func (d *Daemon) parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
+func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	portParam, ok := req.URL.Query()["port"]
 	log.Debugf("Looking for process of port: %s\n", portParam)
 
@@ -40,9 +42,10 @@ func (d *Daemon) parsePortParam(w http.ResponseWriter, req *http.Request) (uint3
 	return uint32(p), nil
 }
 
-func (d *Daemon) Process(w http.ResponseWriter, req *http.Request) {
+// Process is handler for serving process info
+func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 	// todo: cache result for a short period (10s? 30s?)
-	port, err := d.parsePortParam(w, req)
+	port, err := parsePortParam(w, req)
 	if err != nil {
 		http.Error(w, "port param is required", http.StatusBadRequest)
 		return
@@ -85,7 +88,7 @@ func (d *Daemon) Process(w http.ResponseWriter, req *http.Request) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(types.DaemonProcess{
+		json.NewEncoder(w).Encode(types.AgentProcess{
 			Laddr:    types.IPPort{IP: conn.Laddr.IP, Port: conn.Laddr.Port},
 			Status:   conn.Status,
 			Pid:      conn.Pid,
@@ -99,9 +102,10 @@ func (d *Daemon) Process(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func (d *Daemon) Run() error {
-	http.HandleFunc("/proc", d.Process)
-	err := http.ListenAndServe(d.Config.ListenAddress, nil)
+// Run is main function to run http server
+func (a *Agent) Run() error {
+	http.HandleFunc("/proc", a.Process)
+	err := http.ListenAndServe(a.Config.ListenAddress, nil)
 	if err != nil {
 		log.Errorln(err.Error())
 		return err
