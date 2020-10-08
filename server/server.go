@@ -195,7 +195,7 @@ func (s *Server) Processes(w http.ResponseWriter, req *http.Request) {
 		s.Poll()
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -214,7 +214,7 @@ func (s *Server) Health(w http.ResponseWriter, req *http.Request) {
 func (s *Server) Poll() {
 	log.Debugf("Polling...")
 	// todo: configurable time
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	s.KimoProcesses = make([]*KimoProcess, 0)
@@ -226,11 +226,9 @@ func (s *Server) Poll() {
 	s.GenerateKimoProcesses(ctx)
 }
 
-// todo: run with context
+// FetchProcesses polls processes periodically
 func (s *Server) FetchProcesses() {
-	// todo: consider initial request
-	// todo: configurable period
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(s.Config.PollDuration * time.Second)
 
 	for {
 		s.Poll() // poll immediately at initialization
@@ -253,6 +251,7 @@ func (s *Server) Static() http.Handler {
 
 }
 
+// todo: reconsider context usages
 // Run is used to run http handlers
 func (s *Server) Run() error {
 	log.Infof("Running server on %s \n", s.Config.ListenAddress)

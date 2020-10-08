@@ -15,6 +15,7 @@ type Config struct {
 type Server struct {
 	DSN                    string        `toml:"dsn"`
 	DaemonPort             uint32        `toml:"daemon_port"`
+	PollDuration           time.Duration `toml:"poll_duration"`
 	TCPProxyMgmtAddress    string        `toml:"tcpproxy_mgmt_address"`
 	ListenAddress          string        `toml:"listen_address"`
 	DaemonConnectTimeout   time.Duration `toml:"daemon_connect_timeout"`
