@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"database/sql"
+	"kimo/config"
 	"kimo/types"
 	"strconv"
 	"strings"
@@ -24,9 +25,9 @@ type MysqlProcess struct {
 }
 
 // NewMysql is used to create a Mysql type.
-func NewMysql(dsn string) *Mysql {
+func NewMysql(cfg config.Server) *Mysql {
 	m := new(Mysql)
-	m.DSN = dsn
+	m.DSN = cfg.DSN
 	return m
 }
 
@@ -36,8 +37,8 @@ type Mysql struct {
 	Processes []MysqlProcess
 }
 
-// FetchProcesses is used to fetch processlist table from information_schema.
-func (m *Mysql) FetchProcesses(ctx context.Context, procsC chan<- []*MysqlProcess, errC chan<- error) {
+// Fetch is used to fetch processlist table from information_schema.
+func (m *Mysql) Fetch(ctx context.Context, procsC chan<- []*MysqlProcess, errC chan<- error) {
 	log.Infoln("Requesting to mysql...")
 	db, err := sql.Open("mysql", m.DSN)
 

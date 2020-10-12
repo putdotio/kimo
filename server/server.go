@@ -65,15 +65,15 @@ func (s *Server) ReturnResponse(ctx context.Context, w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// Fetch fetches processes through Client object
-func (s *Server) Fetch() {
+// FetchAll fetches all processes through Client object
+func (s *Server) FetchAll() {
 	// todo: call with lock
 	// todo: prevent race condition
 	// todo: if a fetch is in progress and a new fetch is triggered, cancel the existing one.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ps, err := s.Client.Fetch(ctx)
+	ps, err := s.Client.FetchAll(ctx)
 	if err != nil {
 		log.Error(err.Error())
 		return
@@ -91,7 +91,7 @@ func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if fetch {
-		s.Fetch()
+		s.FetchAll()
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -120,11 +120,11 @@ func (s *Server) pollAgents() {
 	ticker := time.NewTicker(s.Config.PollDuration * time.Second)
 
 	for {
-		s.Fetch() // poll immediately at initialization
+		s.FetchAll() // poll immediately at initialization
 		select {
 		// todo: add return case
 		case <-ticker.C:
-			s.Fetch()
+			s.FetchAll()
 		}
 	}
 

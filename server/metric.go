@@ -60,7 +60,7 @@ func (pm *PrometheusMetric) PollMetrics() {
 // SetMetrics sets metrics based on Processes
 func (pm *PrometheusMetric) SetMetrics() {
 	if len(pm.Server.Processes) == 0 {
-		pm.Server.Fetch()
+		pm.Server.FetchAll()
 		log.Debugln("0 kimo processes. Continue...")
 		return
 	}

@@ -2,26 +2,20 @@ package server
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"kimo/config"
 	"kimo/types"
 	"net"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/cenkalti/log"
 )
 
 // Client is used for creating process list
 type Client struct {
-	Mysql               *Mysql
-	TCPProxy            *TCPProxy
-	AgentConnectTimeout time.Duration
-	AgentReadTimeout    time.Duration
-	AgentPort           uint32
+	Mysql    *Mysql
+	TCPProxy *TCPProxy
+	Agent    *Agent
 }
 
 // KimoProcess is combined with processes from mysql to agent through tcpproxy
@@ -29,7 +23,7 @@ type KimoProcess struct {
 	AgentProcess   *types.AgentProcess
 	MysqlProcess   *MysqlProcess
 	TCPProxyRecord *TCPProxyRecord
-	Client         *Client
+	Agent          *Agent
 }
 
 // SetAgentProcess is used to set agent process of a KimoProcess
@@ -46,7 +40,7 @@ func (kp *KimoProcess) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup) 
 		host = kp.MysqlProcess.Address.IP
 		port = kp.MysqlProcess.Address.Port
 	}
-	dp, err := kp.Client.get(ctx, host, port)
+	dp, err := kp.Agent.Fetch(ctx, host, port)
 	if err != nil {
 		log.Debugln(err.Error())
 		kp.AgentProcess = &types.AgentProcess{}
@@ -58,11 +52,9 @@ func (kp *KimoProcess) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup) 
 // NewClient is constructor fuction for creating a Client object
 func NewClient(cfg config.Server) *Client {
 	p := new(Client)
-	p.Mysql = NewMysql(cfg.DSN)
-	p.TCPProxy = NewTCPProxy(cfg.TCPProxyMgmtAddress, cfg.TCPProxyConnectTimeout, cfg.TCPProxyReadTimeout)
-	p.AgentPort = cfg.AgentPort
-	p.AgentConnectTimeout = cfg.AgentConnectTimeout
-	p.AgentReadTimeout = cfg.AgentReadTimeout
+	p.Mysql = NewMysql(cfg)
+	p.TCPProxy = NewTCPProxy(cfg)
+	p.Agent = NewAgent(cfg)
 	return p
 }
 
@@ -104,7 +96,7 @@ func (c *Client) initializeKimoProcesses(mps []*MysqlProcess, tps []*TCPProxyRec
 		kps = append(kps, &KimoProcess{
 			MysqlProcess:   mp,
 			TCPProxyRecord: tpr,
-			Client:         c,
+			Agent:          c.Agent,
 		})
 	}
 	log.Infof("%d processes are initialized \n", len(kps))
@@ -120,8 +112,8 @@ func (c *Client) createKimoProcesses(ctx context.Context) ([]*KimoProcess, error
 	mpsC := make(chan []*MysqlProcess)
 	tpsC := make(chan []*TCPProxyRecord)
 
-	go c.Mysql.FetchProcesses(ctx, mpsC, errC)
-	go c.TCPProxy.FetchRecords(ctx, tpsC, errC)
+	go c.Mysql.Fetch(ctx, mpsC, errC)
+	go c.TCPProxy.Fetch(ctx, tpsC, errC)
 	for {
 		if mps != nil && tps != nil {
 			kps := c.initializeKimoProcesses(mps, tps)
@@ -177,8 +169,8 @@ func (c *Client) createProcesses(kps []*KimoProcess) []Process {
 	return ps
 }
 
-// Fetch is used to create processes from mysql to agents
-func (c *Client) Fetch(ctx context.Context) ([]Process, error) {
+// FetchAll is used to create processes from mysql to agents
+func (c *Client) FetchAll(ctx context.Context) ([]Process, error) {
 	log.Debugf("Fetching...")
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -195,31 +187,4 @@ func (c *Client) Fetch(ctx context.Context) ([]Process, error) {
 
 	log.Debugf("%d processes are generated \n", len(ps))
 	return ps, nil
-}
-
-func (c *Client) get(ctx context.Context, host string, port uint32) (*types.AgentProcess, error) {
-	// todo: use request with context
-	var httpClient = NewHTTPClient(c.AgentConnectTimeout*time.Second, c.AgentReadTimeout*time.Second)
-	url := fmt.Sprintf("http://%s:%d/proc?port=%d", host, c.AgentPort, port)
-	log.Debugf("Requesting to %s\n", url)
-	response, err := httpClient.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != 200 {
-		log.Debugf("Error: %s -> %s\n", url, response.Status)
-		return nil, errors.New("status code is not 200")
-	}
-
-	dp := types.AgentProcess{}
-	err = json.NewDecoder(response.Body).Decode(&dp)
-
-	// todo: consider NotFound
-	if err != nil {
-		log.Errorln(err.Error())
-		return nil, err
-	}
-
-	return &dp, nil
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"kimo/config"
 	"kimo/types"
 	"net/http"
 	"time"
@@ -32,15 +33,15 @@ type TCPProxy struct {
 }
 
 // NewTCPProxy is used to create a new TCPProxy
-func NewTCPProxy(mgmtAddress string, connectTimeout, readTimeout time.Duration) *TCPProxy {
+func NewTCPProxy(cfg config.Server) *TCPProxy {
 	t := new(TCPProxy)
-	t.MgmtAddress = mgmtAddress
-	t.HTTPClient = NewHTTPClient(connectTimeout*time.Second, readTimeout*time.Second)
+	t.MgmtAddress = cfg.TCPProxyMgmtAddress
+	t.HTTPClient = NewHTTPClient(cfg.TCPProxyConnectTimeout*time.Second, cfg.TCPProxyReadTimeout*time.Second)
 	return t
 }
 
-// FetchRecords is used to fetch connection records from tcp proxy.
-func (t *TCPProxy) FetchRecords(ctx context.Context, recordsC chan<- []*TCPProxyRecord, errC chan<- error) {
+// Fetch is used to fetch connection records from tcp proxy.
+func (t *TCPProxy) Fetch(ctx context.Context, recordsC chan<- []*TCPProxyRecord, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns?json=true", t.MgmtAddress)
 	log.Infof("Requesting to tcpproxy %s\n", url)
 	response, err := t.HTTPClient.Get(url)
