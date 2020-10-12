@@ -15,6 +15,7 @@ type Config struct {
 
 // Server is used as server config
 type Server struct {
+	// todo: set defaults
 	DSN                    string        `toml:"dsn"`
 	AgentPort              uint32        `toml:"agent_port"`
 	PollDuration           time.Duration `toml:"poll_duration"`
