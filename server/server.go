@@ -2,23 +2,11 @@ package server
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"kimo/config"
-	"net/http"
 	"time"
 
 	"github.com/cenkalti/log"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rakyll/statik/fs"
-
-	_ "kimo/statik" // Auto-generated module by statik.
 )
-
-// Response is type for returning a response from kimo server
-type Response struct {
-	Processes []Process `json:"processes"`
-}
 
 // Process is the final processes that is combined with AgentProcess + TCPProxyRecord + MysqlProcess
 type Process struct {
@@ -53,18 +41,6 @@ func NewServer(cfg *config.Config) *Server {
 	return s
 }
 
-// ReturnResponse is used to return a response from server
-func (s *Server) ReturnResponse(ctx context.Context, w http.ResponseWriter) {
-	// todo: bad naming.
-	log.Infof("Returning response with %d kimo processes...\n", len(s.Processes))
-	w.Header().Set("Content-Type", "application/json")
-
-	response := &Response{
-		Processes: s.Processes,
-	}
-	json.NewEncoder(w).Encode(response)
-}
-
 // FetchAll fetches all processes through Client object
 func (s *Server) FetchAll() {
 	// todo: call with lock
@@ -82,38 +58,9 @@ func (s *Server) FetchAll() {
 	log.Debugf("%d processes are set\n", len(s.Processes))
 }
 
-// Procs is a handler for returning process list
-func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
-	forceParam := req.URL.Query().Get("force")
-	fetch := false
-	if forceParam == "true" || len(s.Processes) == 0 {
-		fetch = true
-	}
-
-	if fetch {
-		s.FetchAll()
-	}
-
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "access-control-allow-origin, access-control-allow-headers")
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.ReturnResponse(ctx, w)
-
-}
-
-// Health is a dummy endpoint for load balancer health check
-func (s *Server) Health(w http.ResponseWriter, req *http.Request) {
-	// todo: real health check
-	fmt.Fprintf(w, "OK")
-}
-
-// todo: bad naming.
-func (s *Server) pollMetrics() {
-	// todo: bad naming.
-	s.PrometheusMetric.PollMetrics()
+func (s *Server) setMetrics() {
+	// todo: prevent race condition
+	s.PrometheusMetric.SetMetrics()
 }
 
 func (s *Server) pollAgents() {
@@ -128,45 +75,4 @@ func (s *Server) pollAgents() {
 		}
 	}
 
-}
-
-// Static serves static files (web components).
-func (s *Server) Static() http.Handler {
-	statikFS, err := fs.New()
-	if err != nil {
-		log.Errorln(err)
-	}
-	return http.FileServer(statikFS)
-
-}
-
-// Metrics is used to expose metrics that is compatible with Prometheus exporter
-func (s *Server) Metrics() http.Handler {
-	if len(s.Processes) == 0 {
-		log.Debugln("Processes are not initialized. Polling...")
-		s.PrometheusMetric.SetMetrics()
-	}
-
-	return promhttp.Handler()
-}
-
-// Run is used to run http handlers
-func (s *Server) Run() error {
-	// todo: move background jobs to another file. Keep only http related ones, here.
-	// todo: reconsider context usages
-	log.Infof("Running server on %s \n", s.Config.ListenAddress)
-
-	go s.pollAgents()
-	go s.pollMetrics()
-
-	http.Handle("/", s.Static())
-	http.Handle("/metrics", s.Metrics())
-	http.HandleFunc("/procs", s.Procs)
-	http.HandleFunc("/health", s.Health)
-	err := http.ListenAndServe(s.Config.ListenAddress, nil)
-	if err != nil {
-		log.Errorln(err.Error())
-		return err
-	}
-	return nil
 }

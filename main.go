@@ -57,8 +57,8 @@ func main() {
 			Name:  "agent",
 			Usage: "run agent",
 			Action: func(c *cli.Context) error {
-				kimoAgent := agent.NewAgent(cfg)
-				err := kimoAgent.Run()
+				a := agent.NewAgent(cfg)
+				err := a.Run()
 				if err != nil {
 					return err
 				}
@@ -69,9 +69,9 @@ func main() {
 			Name:  "server",
 			Usage: "run server",
 			Action: func(c *cli.Context) error {
-				kimoServer := server.NewServer(cfg)
-				kimoServer.Config = &cfg.Server
-				err := kimoServer.Run()
+				s := server.NewServer(cfg)
+				s.Config = &cfg.Server
+				err := s.Run()
 				if err != nil {
 					return err
 				}

@@ -42,43 +42,36 @@ func NewPrometheusMetric(server *Server) *PrometheusMetric {
 	}
 }
 
-// PollMetrics is used to set metrics periodically.
-func (pm *PrometheusMetric) PollMetrics() {
-	// todo: separate prometheus and json metrics
+// SetMetrics is used to set metrics periodically.
+func (pm *PrometheusMetric) SetMetrics() {
 	// todo: configurable time
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 
 	for {
 		select {
 		// todo: add return case
 		case <-ticker.C:
-			pm.SetMetrics()
+			pm.Set()
 		}
 	}
 }
 
-// SetMetrics sets metrics based on Processes
-func (pm *PrometheusMetric) SetMetrics() {
+// Set sets all metrics based on Processes
+func (pm *PrometheusMetric) Set() {
 	if len(pm.Server.Processes) == 0 {
-		pm.Server.FetchAll()
-		log.Debugln("0 kimo processes. Continue...")
 		return
 	}
-	pm.Set(pm.Server.Processes)
-}
 
-// Set sets all types (gauge, counter etc.) of metrics based on process list.
-func (pm *PrometheusMetric) Set(ps []Process) {
-	log.Debugf("Found '%d' processes. Setting metrics...\n", len(ps))
+	log.Debugf("Found '%d' processes. Setting metrics...\n", len(pm.Server.Processes))
 
-	pm.connCount.Set(float64(len(ps)))
+	pm.connCount.Set(float64(len(pm.Server.Processes)))
 
 	var metricM = map[string]map[string]int{}
 	// todo: keys should be constant at somewhere else and we should iterate through them
 	metricM["db"] = map[string]int{}
 	metricM["host"] = map[string]int{}
 
-	for _, p := range ps {
+	for _, p := range pm.Server.Processes {
 		// todo: keys should be constant at somewhere else and we should iterate through them
 		metricM["db"][p.DB]++
 		metricM["host"][p.Host]++

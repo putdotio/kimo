@@ -46,7 +46,7 @@ func (c *Config) ReadFile(name string) error {
 
 var defaultConfig = Config{
 	Server: Server{
-		DSN:                    "kimo:123@(mysql:3306)/information_schema",
+		DSN:                    "",
 		AgentPort:              3333,
 		PollDuration:           30,
 		TCPProxyMgmtAddress:    "tcpproxy:3307",
