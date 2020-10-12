@@ -68,6 +68,10 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
+		if conn.Pid == 0 {
+			continue
+		}
+
 		process, err := gopsutilProcess.NewProcess(conn.Pid)
 		if err != nil {
 			log.Debugf("Error occured while finding the process %s\n", err.Error())
