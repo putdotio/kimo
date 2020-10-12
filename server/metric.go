@@ -6,8 +6,6 @@ import (
 	"github.com/cenkalti/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-
-	_ "kimo/statik" // Auto-generated module by statik.
 )
 
 // PrometheusMetric is the type that contains all metrics those will be exposed.
