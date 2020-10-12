@@ -15,7 +15,6 @@ type Config struct {
 
 // Server is used as server config
 type Server struct {
-	// todo: set defaults
 	DSN                    string        `toml:"dsn"`
 	AgentPort              uint32        `toml:"agent_port"`
 	PollDuration           time.Duration `toml:"poll_duration"`
@@ -35,6 +34,7 @@ type Agent struct {
 // NewConfig is constructor function for Config type
 func NewConfig() *Config {
 	c := new(Config)
+	*c = defaultConfig
 	return c
 }
 
@@ -42,4 +42,22 @@ func NewConfig() *Config {
 func (c *Config) ReadFile(name string) error {
 	_, err := toml.DecodeFile(name, c)
 	return err
+}
+
+var defaultConfig = Config{
+	Server: Server{
+		DSN:                    "kimo:123@(mysql:3306)/information_schema",
+		AgentPort:              3333,
+		PollDuration:           30,
+		TCPProxyMgmtAddress:    "tcpproxy:3307",
+		ListenAddress:          "0.0.0.0:3322",
+		AgentConnectTimeout:    2,
+		AgentReadTimeout:       3,
+		TCPProxyConnectTimeout: 1,
+		TCPProxyReadTimeout:    1,
+	},
+	Agent: Agent{
+		ListenAddress: "0.0.0.0:3333",
+	},
+	Debug: true,
 }
