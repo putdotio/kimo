@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/cenkalti/log"
@@ -82,12 +81,10 @@ func (pm *PrometheusMetric) Set(ps []Process) {
 	metricM["host"] = map[string]int{}
 
 	for _, p := range ps {
-		fmt.Printf("xxx -> %v\n", p)
 		// todo: keys should be constant at somewhere else and we should iterate through them
 		metricM["db"][p.DB]++
 		metricM["host"][p.Host]++
 	}
-	fmt.Printf("www -> %v \n", metricM)
 	for k, v := range metricM {
 		if k == "db" {
 			// todo: DRY
