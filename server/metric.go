@@ -57,19 +57,19 @@ func (pm *PrometheusMetric) PollMetrics() {
 	}
 }
 
-// SetMetrics sets metrics based on FinalProcesses
+// SetMetrics sets metrics based on Processes
 func (pm *PrometheusMetric) SetMetrics() {
-	if len(pm.Server.FinalProcesses) == 0 {
-		pm.Server.Poll()
+	if len(pm.Server.Processes) == 0 {
+		pm.Server.Fetch()
 		log.Debugln("0 kimo processes. Continue...")
 		return
 	}
-	pm.Set(pm.Server.FinalProcesses)
+	pm.Set(pm.Server.Processes)
 }
 
 // Set sets all types (gauge, counter etc.) of metrics based on process list.
 func (pm *PrometheusMetric) Set(ps []Process) {
-	log.Debugf("Found '%d' kimo processes. Setting metrics...\n", len(ps))
+	log.Debugf("Found '%d' processes. Setting metrics...\n", len(ps))
 
 	pm.connCount.Set(float64(len(ps)))
 
