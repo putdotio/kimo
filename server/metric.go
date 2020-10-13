@@ -77,18 +77,23 @@ func (pm *PrometheusMetric) Set() {
 		metricM["host"][p.Host]++
 	}
 	for k, v := range metricM {
+		// todo: define a new type for metrics and contain name, protmetheus metric type. So, we won't have to
+		// do manuel if-else check here.
 		if k == "db" {
-			// todo: DRY
-			for i, j := range v {
-				pm.dbCount.With(prometheus.Labels{"db": i}).Set(float64(j))
-			}
+			setGaugeVec(k, v, pm.dbCount)
 		} else {
 			if k == "host" {
-				// todo: DRY
-				for i, j := range v {
-					pm.hostConn.With(prometheus.Labels{"host": i}).Set(float64(j))
-				}
+				setGaugeVec(k, v, pm.hostConn)
 			}
 		}
+	}
+}
+
+func setGaugeVec(name string, m map[string]int, gv *prometheus.GaugeVec) {
+	for i, j := range m {
+		if i == "" {
+			i = "UNKNOWN"
+		}
+		gv.With(prometheus.Labels{name: i}).Set(float64(j))
 	}
 }
