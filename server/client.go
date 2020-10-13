@@ -40,12 +40,14 @@ func (kp *KimoProcess) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup) 
 		host = kp.MysqlProcess.Address.IP
 		port = kp.MysqlProcess.Address.Port
 	}
-	dp, err := kp.Agent.Fetch(ctx, host, port)
+	ap, err := kp.Agent.Fetch(ctx, host, port)
 	if err != nil {
 		log.Debugln(err.Error())
-		kp.AgentProcess = &types.AgentProcess{}
+		kp.AgentProcess = &types.AgentProcess{
+			Hostname: "ERROR",
+		}
 	} else {
-		kp.AgentProcess = dp
+		kp.AgentProcess = ap
 	}
 }
 

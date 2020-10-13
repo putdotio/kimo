@@ -98,12 +98,11 @@ func (a *Agent) createAgentProcess(proc *hostProc) *types.AgentProcess {
 		log.Debugf("Cmdline could not found for %d\n", proc.process.Pid)
 	}
 	return &types.AgentProcess{
-		Laddr:    types.IPPort{IP: proc.conn.Laddr.IP, Port: proc.conn.Laddr.Port},
-		Status:   proc.conn.Status,
-		Pid:      proc.conn.Pid,
-		Name:     name,
-		CmdLine:  cl,
-		Hostname: a.Hostname,
+		Laddr:   types.IPPort{IP: proc.conn.Laddr.IP, Port: proc.conn.Laddr.Port},
+		Status:  proc.conn.Status,
+		Pid:     proc.conn.Pid,
+		Name:    name,
+		CmdLine: cl,
 	}
 }
 
@@ -117,11 +116,14 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 	}
 	p := a.findProc(port)
 	ap := a.createAgentProcess(p)
+
+	w.Header().Set("Content-Type", "application/json")
 	if ap == nil {
-		http.Error(w, "process not found!", http.StatusNotFound)
+		json.NewEncoder(w).Encode(&types.AgentProcess{
+			Hostname: a.Hostname,
+		})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(&ap)
 	return
 }

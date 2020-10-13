@@ -44,8 +44,8 @@ func (a *Agent) Fetch(ctx context.Context, host string, port uint32) (*types.Age
 		return nil, errors.New("status code is not 200")
 	}
 
-	dp := types.AgentProcess{}
-	err = json.NewDecoder(response.Body).Decode(&dp)
+	ap := types.AgentProcess{}
+	err = json.NewDecoder(response.Body).Decode(&ap)
 
 	// todo: consider NotFound
 	if err != nil {
@@ -53,5 +53,5 @@ func (a *Agent) Fetch(ctx context.Context, host string, port uint32) (*types.Age
 		return nil, err
 	}
 
-	return &dp, nil
+	return &ap, nil
 }
