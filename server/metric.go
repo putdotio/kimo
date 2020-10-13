@@ -58,20 +58,19 @@ func (pm *PrometheusMetric) SetMetrics() {
 
 // Set sets all metrics based on Processes
 func (pm *PrometheusMetric) Set() {
-	if len(pm.Server.Processes) == 0 {
+	ps := pm.Server.Processes
+	if len(ps) == 0 {
 		return
 	}
-
 	log.Debugf("Found '%d' processes. Setting metrics...\n", len(pm.Server.Processes))
-
-	pm.connCount.Set(float64(len(pm.Server.Processes)))
+	pm.connCount.Set(float64(len(ps)))
 
 	var metricM = map[string]map[string]int{}
 	// todo: keys should be constant at somewhere else and we should iterate through them
 	metricM["db"] = map[string]int{}
 	metricM["host"] = map[string]int{}
 
-	for _, p := range pm.Server.Processes {
+	for _, p := range ps {
 		// todo: keys should be constant at somewhere else and we should iterate through them
 		metricM["db"][p.DB]++
 		metricM["host"][p.Host]++
