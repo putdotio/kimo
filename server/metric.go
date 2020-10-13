@@ -1,6 +1,7 @@
 package server
 
 import (
+	"strings"
 	"time"
 
 	"github.com/cenkalti/log"
@@ -10,35 +11,63 @@ import (
 
 // PrometheusMetric is the type that contains all metrics those will be exposed.
 type PrometheusMetric struct {
-	connCount prometheus.Gauge
-	hostConn  *prometheus.GaugeVec
-	dbCount   *prometheus.GaugeVec
-	Server    *Server
+	conns   prometheus.Gauge
+	host    *prometheus.GaugeVec
+	db      *prometheus.GaugeVec
+	command *prometheus.GaugeVec
+	state   *prometheus.GaugeVec
+	cmdline *prometheus.GaugeVec
+	Server  *Server
 }
 
 // NewPrometheusMetric is the constructor function of PrometheusMetric
 func NewPrometheusMetric(server *Server) *PrometheusMetric {
 	return &PrometheusMetric{
 		Server: server,
-		connCount: promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "kimo_conn_count",
-			Help: "Total number of db process",
+		conns: promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "kimo_conns_total",
+			Help: "Total number of db processes (conns)",
 		}),
-		hostConn: promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "kimo_host_conns",
-			Help: "Connection count per host",
+		host: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "kimo_conns_host",
+			Help: "Conns per host",
 		},
 			[]string{
 				"host",
 			},
 		),
-		dbCount: promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "kimo_db_count",
-			Help: "Total number of connections per db",
+		db: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "kimo_conns_db",
+			Help: "Conns per db",
 		},
 			[]string{
 				"db",
-			}),
+			},
+		),
+		command: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "kimo_conns_command",
+			Help: "Conns per command",
+		},
+			[]string{
+				"command",
+			},
+		),
+		state: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "kimo_conns_state",
+			Help: "Conns per state",
+		},
+			[]string{
+				"state",
+			},
+		),
+		cmdline: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "kimo_conns_cmdline",
+			Help: "conns per cmdline",
+		},
+			[]string{
+				"cmdline",
+			},
+		),
 	}
 }
 
@@ -63,27 +92,35 @@ func (pm *PrometheusMetric) Set() {
 		return
 	}
 	log.Debugf("Found '%d' processes. Setting metrics...\n", len(pm.Server.Processes))
-	pm.connCount.Set(float64(len(ps)))
+	pm.conns.Set(float64(len(ps)))
 
+	// todo: too much duplication
 	var metricM = map[string]map[string]int{}
-	// todo: keys should be constant at somewhere else and we should iterate through them
 	metricM["db"] = map[string]int{}
 	metricM["host"] = map[string]int{}
+	metricM["state"] = map[string]int{}
+	metricM["command"] = map[string]int{}
+	metricM["cmdline"] = map[string]int{}
 
 	for _, p := range ps {
-		// todo: keys should be constant at somewhere else and we should iterate through them
 		metricM["db"][p.DB]++
 		metricM["host"][p.Host]++
+		metricM["command"][p.Command]++
+		metricM["state"][p.State]++
+		metricM["cmdline"][strings.Join(p.CmdLine, " ")]++
 	}
 	for k, v := range metricM {
-		// todo: define a new type for metrics and contain name, protmetheus metric type. So, we won't have to
-		// do manuel if-else check here.
-		if k == "db" {
-			setGaugeVec(k, v, pm.dbCount)
-		} else {
-			if k == "host" {
-				setGaugeVec(k, v, pm.hostConn)
-			}
+		switch k {
+		case "db":
+			setGaugeVec(k, v, pm.db)
+		case "host":
+			setGaugeVec(k, v, pm.host)
+		case "command":
+			setGaugeVec(k, v, pm.command)
+		case "state":
+			setGaugeVec(k, v, pm.state)
+		case "cmdline":
+			setGaugeVec(k, v, pm.cmdline)
 		}
 	}
 }
