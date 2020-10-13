@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/cenkalti/log"
 	gopsutilNet "github.com/shirou/gopsutil/net"
@@ -17,12 +18,24 @@ import (
 func NewAgent(cfg *config.Config) *Agent {
 	d := new(Agent)
 	d.Config = &cfg.Agent
+	d.Hostname = getHostname()
 	return d
+}
+
+func getHostname() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Errorf("Hostname could not found")
+		hostname = "UNKNOWN"
+	}
+	return hostname
 }
 
 // Agent is type for handling agent operations
 type Agent struct {
-	Config *config.Agent
+	Config   *config.Agent
+	Conns    []gopsutilNet.ConnectionStat
+	Hostname string
 }
 
 func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
@@ -50,20 +63,7 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "port param is required", http.StatusBadRequest)
 		return
 	}
-	connections, err := gopsutilNet.Connections("all")
-	if err != nil {
-		log.Errorf("Error while getting connections: %s\n", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Errorf("Hostname could not found")
-		hostname = "UNKNOWN"
-	}
-
-	for _, conn := range connections {
+	for _, conn := range a.Conns {
 		if conn.Laddr.Port != port {
 			continue
 		}
@@ -98,7 +98,7 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 			Pid:      conn.Pid,
 			Name:     name,
 			CmdLine:  cls,
-			Hostname: hostname,
+			Hostname: a.Hostname,
 		})
 		return
 	}
@@ -106,8 +106,36 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
+func (a *Agent) pollConns() {
+	// todo: run with context
+	log.Debugln("Polling...")
+	ticker := time.NewTicker(a.Config.PollDuration * time.Second)
+
+	for {
+		a.getConns() // poll immediately at the initialization
+		select {
+		// todo: add return case
+		case <-ticker.C:
+			a.getConns()
+		}
+	}
+
+}
+func (a *Agent) getConns() {
+	// This is an expensive operation.
+	// So, we need to call infrequent to prevent high load on servers those run kimo agents.
+	conns, err := gopsutilNet.Connections("all")
+	if err != nil {
+		log.Errorln(err.Error())
+		return
+	}
+	a.Conns = conns
+}
+
 // Run is main function to run http server
 func (a *Agent) Run() error {
+	go a.pollConns()
+
 	http.HandleFunc("/proc", a.Process)
 	err := http.ListenAndServe(a.Config.ListenAddress, nil)
 	if err != nil {

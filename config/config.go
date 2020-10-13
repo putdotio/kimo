@@ -28,7 +28,8 @@ type Server struct {
 
 // Agent is used as anget config on agent machines
 type Agent struct {
-	ListenAddress string `toml:"listen_address"`
+	ListenAddress string        `toml:"listen_address"`
+	PollDuration  time.Duration `toml:"poll_duration"`
 }
 
 // NewConfig is constructor function for Config type
@@ -48,7 +49,7 @@ var defaultConfig = Config{
 	Server: Server{
 		DSN:                    "",
 		AgentPort:              3333,
-		PollDuration:           30,
+		PollDuration:           10,
 		TCPProxyMgmtAddress:    "tcpproxy:3307",
 		ListenAddress:          "0.0.0.0:3322",
 		AgentConnectTimeout:    2,
@@ -58,6 +59,7 @@ var defaultConfig = Config{
 	},
 	Agent: Agent{
 		ListenAddress: "0.0.0.0:3333",
+		PollDuration:  30,
 	},
 	Debug: true,
 }
