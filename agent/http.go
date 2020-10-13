@@ -14,6 +14,13 @@ import (
 	gopsutilProcess "github.com/shirou/gopsutil/process"
 )
 
+// Agent is type for handling agent operations
+type Agent struct {
+	Config   *config.Agent
+	Conns    []gopsutilNet.ConnectionStat
+	Hostname string
+}
+
 // NewAgent is constuctor function for Agent type
 func NewAgent(cfg *config.Config) *Agent {
 	d := new(Agent)
@@ -29,13 +36,6 @@ func getHostname() string {
 		hostname = "UNKNOWN"
 	}
 	return hostname
-}
-
-// Agent is type for handling agent operations
-type Agent struct {
-	Config   *config.Agent
-	Conns    []gopsutilNet.ConnectionStat
-	Hostname string
 }
 
 func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
@@ -55,6 +55,58 @@ func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	return uint32(p), nil
 }
 
+type hostProc struct {
+	process *gopsutilProcess.Process
+	conn    gopsutilNet.ConnectionStat
+}
+
+func (a *Agent) findProc(port uint32) *hostProc {
+	for _, conn := range a.Conns {
+		if conn.Laddr.Port != port {
+			continue
+		}
+
+		process, err := gopsutilProcess.NewProcess(conn.Pid)
+		if err != nil {
+			log.Debugf("Error occured while finding the process %s\n", err.Error())
+			return nil
+		}
+
+		if process == nil {
+			log.Debugf("Process could not found for %d\n", conn.Pid)
+			return nil
+		}
+
+		return &hostProc{
+			process: process,
+			conn:    conn,
+		}
+	}
+	return nil
+}
+
+func (a *Agent) createAgentProcess(proc *hostProc) *types.AgentProcess {
+	if proc == nil {
+		return nil
+	}
+	name, err := proc.process.Name()
+	if err != nil {
+		name = ""
+	}
+	cl, err := proc.process.CmdlineSlice()
+	if err != nil {
+		log.Debugf("Cmdline could not found for %d\n", proc.process.Pid)
+	}
+	return &types.AgentProcess{
+		Laddr:    types.IPPort{IP: proc.conn.Laddr.IP, Port: proc.conn.Laddr.Port},
+		Status:   proc.conn.Status,
+		Pid:      proc.conn.Pid,
+		Name:     name,
+		CmdLine:  cl,
+		Hostname: a.Hostname,
+	}
+}
+
 // Process is handler for serving process info
 func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 	// todo: cache result for a short period (10s? 30s?)
@@ -63,46 +115,14 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "port param is required", http.StatusBadRequest)
 		return
 	}
-	for _, conn := range a.Conns {
-		if conn.Laddr.Port != port {
-			continue
-		}
-
-		if conn.Pid == 0 {
-			continue
-		}
-
-		process, err := gopsutilProcess.NewProcess(conn.Pid)
-		if err != nil {
-			log.Debugf("Error occured while finding the process %s\n", err.Error())
-			continue
-		}
-		if process == nil {
-			log.Debugf("Process could not found for %d\n", conn.Pid)
-			continue
-		}
-
-		name, err := process.Name()
-		if err != nil {
-			name = ""
-		}
-		cls, err := process.CmdlineSlice()
-		if err != nil {
-			log.Debugf("Cmdline could not found for %d\n", process.Pid)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(types.AgentProcess{
-			Laddr:    types.IPPort{IP: conn.Laddr.IP, Port: conn.Laddr.Port},
-			Status:   conn.Status,
-			Pid:      conn.Pid,
-			Name:     name,
-			CmdLine:  cls,
-			Hostname: a.Hostname,
-		})
+	p := a.findProc(port)
+	ap := a.createAgentProcess(p)
+	if ap == nil {
+		http.Error(w, "process not found!", http.StatusNotFound)
 		return
 	}
-	http.Error(w, "process not found!", http.StatusNotFound)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(&ap)
 	return
 }
 
@@ -123,7 +143,7 @@ func (a *Agent) pollConns() {
 }
 func (a *Agent) getConns() {
 	// This is an expensive operation.
-	// So, we need to call infrequent to prevent high load on servers those run kimo agents.
+	// So, we need to call it infrequent to prevent high load on servers those run kimo agents.
 	conns, err := gopsutilNet.Connections("all")
 	if err != nil {
 		log.Errorln(err.Error())
