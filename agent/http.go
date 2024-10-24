@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/cenkalti/log"
-	gopsutilNet "github.com/shirou/gopsutil/net"
-	gopsutilProcess "github.com/shirou/gopsutil/process"
+	gopsutilNet "github.com/shirou/gopsutil/v4/net"
+	gopsutilProcess "github.com/shirou/gopsutil/v4/process"
 )
 
 // Agent is type for handling agent operations
