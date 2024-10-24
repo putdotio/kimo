@@ -1,7 +1,10 @@
+version: 2
+
 before:
   hooks:
-    - go install github.com/rakyll/statik@v0.1.7 && statik -src=./server/static -include='*.html'
+    - go run github.com/rakyll/statik@latest  -src=./server/static -include=*.html
     - go mod download
+
 builds:
   - env:
       - CGO_ENABLED=0
