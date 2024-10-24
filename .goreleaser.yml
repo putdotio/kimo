@@ -1,5 +1,3 @@
-version: 2
-
 before:
   hooks:
     - go install github.com/rakyll/statik@v0.1.7 && statik -src=./server/static -include='*.html'
