@@ -1,7 +1,7 @@
 before:
   hooks:
     - go get github.com/rakyll/statik
-    - statik -src=./server/static -include='*.html'
+    - $GOPATH/bin/statik -src=./server/static -include='*.html'
     - go mod download
 builds:
   - env:
