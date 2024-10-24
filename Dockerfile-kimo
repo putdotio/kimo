@@ -1,13 +1,16 @@
-FROM golang:1.13
+FROM golang:1.23
 
 RUN apt-get update && apt-get -y install default-mysql-client
+
+ENV GOPATH=/go
+ENV PATH=$PATH:$GOPATH/bin
 
 RUN mkdir /go/src/kimo
 COPY go.mod go.sum /go/src/kimo/
 COPY ./server/static/ /go/src/kimo/server/static
 
-RUN go get github.com/rakyll/statik
-RUN cd /go/src/kimo && statik -src=./server/static -include='*.html'
+RUN cd /go/src/kimo && go install github.com/rakyll/statik
+RUN cd /go/src/kimo && /go/bin/statik -src=./server/static -include='*.html'
 
 COPY . /go/src/kimo
 RUN cd /go/src/kimo && go install

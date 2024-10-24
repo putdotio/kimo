@@ -1,11 +1,14 @@
 # Start from a Debian image with the latest version of Go installed
-# and a workspace (GOPATH) configured at /go.
 FROM kimo-agent
 
-RUN go get github.com/cenkalti/tcpproxy
+ARG VERSION=1.2.12
+
+RUN wget https://github.com/cenkalti/tcpproxy/releases/download/v${VERSION}/tcpproxy_${VERSION}_linux.tar.gz && \
+    tar -zxvf tcpproxy_${VERSION}_linux.tar.gz && \
+    rm -rf tcpproxy-${VERSION}_linux.tar.gz
 
 RUN mkdir /app
-RUN cd /go/src/github.com/cenkalti/tcpproxy/cmd/tcpproxy; go build; cp tcpproxy /app/
+RUN cp tcpproxy /app/
 
 ADD tcpproxy-entrypoint.sh /tmp/
 ENTRYPOINT ["bash", "/tmp/tcpproxy-entrypoint.sh"]

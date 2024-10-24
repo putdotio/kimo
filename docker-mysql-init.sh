@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-mkdir /var/run/mysqld
-chown mysql /var/run/mysqld
-
 mysqld &
 pid="$!"
 
