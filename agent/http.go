@@ -120,13 +120,18 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if ap == nil {
-		json.NewEncoder(w).Encode(&types.AgentProcess{
+		err = json.NewEncoder(w).Encode(&types.AgentProcess{
 			Hostname: a.Hostname,
 		})
+		if err != nil {
+			http.Error(w, "Can not create agent process", http.StatusInternalServerError)
+		}
 		return
 	}
-	json.NewEncoder(w).Encode(&ap)
-	return
+	err = json.NewEncoder(w).Encode(&ap)
+	if err != nil {
+		http.Error(w, "Can not encode agent process", http.StatusInternalServerError)
+	}
 }
 
 func (a *Agent) pollConns() {

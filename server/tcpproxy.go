@@ -58,6 +58,10 @@ func (t *TCPProxy) Fetch(ctx context.Context, recordsC chan<- []*TCPProxyRecord,
 
 	var conns TCPConns
 	err = json.NewDecoder(response.Body).Decode(&conns)
+	if err != nil {
+		log.Errorln("Can not decode conns")
+		errC <- errors.New("can not decode tcpproxy response")
+	}
 	log.Infof("Got %d TCP proxy records \n", len(conns.Records))
 	recordsC <- conns.Records
 }

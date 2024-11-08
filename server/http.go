@@ -60,7 +60,10 @@ func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
 	response := &Response{
 		Processes: s.Processes,
 	}
-	json.NewEncoder(w).Encode(response)
+	err := json.NewEncoder(w).Encode(response)
+	if err != nil {
+		http.Error(w, "Can not encode process", http.StatusInternalServerError)
+	}
 
 }
 
