@@ -22,20 +22,14 @@ type Response struct {
 // NewHTTPClient returns a http client with custom connect & read timeout
 func NewHTTPClient(connectTimeout, readTimeout time.Duration) *http.Client {
 	return &http.Client{
+		// Set total timeout slightly higher than sum of connect + read
+		Timeout: (connectTimeout + readTimeout) + 2*time.Second,
 		Transport: &http.Transport{
-			Dial: timeoutDialer(connectTimeout, readTimeout),
+			DialContext: (&net.Dialer{
+				Timeout: connectTimeout * time.Second,
+			}).DialContext,
+			IdleConnTimeout: 90 * time.Second,
 		},
-	}
-}
-
-func timeoutDialer(connectTimeout, readTimeout time.Duration) func(net, addr string) (c net.Conn, err error) {
-	return func(netw, addr string) (net.Conn, error) {
-		conn, err := net.DialTimeout(netw, addr, connectTimeout)
-		if err != nil {
-			return nil, err
-		}
-		conn.SetDeadline(time.Now().Add(readTimeout))
-		return conn, nil
 	}
 }
 
