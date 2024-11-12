@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"kimo/config"
 	"kimo/types"
+	"net/http"
 	"time"
 
 	"github.com/cenkalti/log"
 )
 
-// Agent is agent client to fetch agent process from Kimo Agent
+// Agent is agent client to fetch agent process from a kimo agent
 type Agent struct {
 	ConnectTimeout time.Duration
 	ReadTimeout    time.Duration
@@ -30,14 +31,18 @@ func NewAgent(cfg config.Server) *Agent {
 
 // Fetch is used to fetch agent process
 func (a *Agent) Fetch(ctx context.Context, host string, port uint32) (*types.AgentProcess, error) {
-	// todo: use request with context
-	var httpClient = NewHTTPClient(a.ConnectTimeout*time.Second, a.ReadTimeout*time.Second)
 	url := fmt.Sprintf("http://%s:%d/proc?port=%d", host, a.Port, port)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	client := &http.Client{}
 	log.Debugf("Requesting to %s\n", url)
-	response, err := httpClient.Get(url)
+	response, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		log.Debugf("Error: %s -> %s\n", url, response.Status)
