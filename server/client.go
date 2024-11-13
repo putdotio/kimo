@@ -13,8 +13,8 @@ import (
 
 // Client is used for creating process list
 type Client struct {
-	Mysql    *Mysql
-	TCPProxy *TCPProxy
+	MysqlClient    *MysqlClient
+	TCPProxyClient *TCPProxyClient
 
 	AgentPort uint32
 }
@@ -60,8 +60,8 @@ func (c *Client) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup, kp *Ki
 // NewClient is constructor fuction for creating a Client object
 func NewClient(cfg config.Server) *Client {
 	c := new(Client)
-	c.Mysql = NewMysql(cfg)
-	c.TCPProxy = NewTCPProxy(cfg)
+	c.MysqlClient = NewMysqlClient(cfg)
+	c.TCPProxyClient = NewTCPProxyClient(cfg)
 	c.AgentPort = cfg.AgentPort
 
 	return c
@@ -119,8 +119,8 @@ func (c *Client) getMysqlResult(ctx context.Context) (*MysqlResult, error) {
 	mpsC := make(chan []*MysqlRow)
 	tpsC := make(chan []*TCPProxyConn)
 
-	go c.Mysql.Get(ctx, mpsC, errC)
-	go c.TCPProxy.Get(ctx, tpsC, errC)
+	go c.MysqlClient.Get(ctx, mpsC, errC)
+	go c.TCPProxyClient.Get(ctx, tpsC, errC)
 
 	for {
 		select {

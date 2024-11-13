@@ -24,23 +24,23 @@ type MysqlRow struct {
 	Address types.IPPort   `json:"address"`
 }
 
-// NewMysql is used to create a Mysql type.
-func NewMysql(cfg config.Server) *Mysql {
-	m := new(Mysql)
+// NewMysqlClient is used to create a Mysql type.
+func NewMysqlClient(cfg config.Server) *MysqlClient {
+	m := new(MysqlClient)
 	m.DSN = cfg.DSN
 	return m
 }
 
-// Mysql is used to get processes from mysql.
-type Mysql struct {
+// MysqlClient is used to get processes from mysql.
+type MysqlClient struct {
 	DSN       string
 	MysqlRows []MysqlRow
 }
 
 // Get is used to fetch processlist table from information_schema.
-func (m *Mysql) Get(ctx context.Context, procsC chan<- []*MysqlRow, errC chan<- error) {
+func (mc *MysqlClient) Get(ctx context.Context, procsC chan<- []*MysqlRow, errC chan<- error) {
 	log.Infoln("Requesting to mysql...")
-	db, err := sql.Open("mysql", m.DSN)
+	db, err := sql.Open("mysql", mc.DSN)
 
 	if err != nil {
 		errC <- err

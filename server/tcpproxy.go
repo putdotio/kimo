@@ -26,25 +26,25 @@ type TCPConnResponse struct {
 	Records []*TCPProxyConn `json:"conns"`
 }
 
-// TCPProxy is used for getting info from tcp proxy
-type TCPProxy struct {
+// TCPProxyClient is used for getting info from tcp proxy
+type TCPProxyClient struct {
 	MgmtAddress string
 	HTTPClient  *http.Client
 }
 
 // NewTCPProxy is used to create a new TCPProxy
-func NewTCPProxy(cfg config.Server) *TCPProxy {
-	t := new(TCPProxy)
-	t.MgmtAddress = cfg.TCPProxyMgmtAddress
-	t.HTTPClient = NewHTTPClient(cfg.TCPProxyConnectTimeout*time.Second, cfg.TCPProxyReadTimeout*time.Second)
-	return t
+func NewTCPProxyClient(cfg config.Server) *TCPProxyClient {
+	tc := new(TCPProxyClient)
+	tc.MgmtAddress = cfg.TCPProxyMgmtAddress
+	tc.HTTPClient = NewHTTPClient(cfg.TCPProxyConnectTimeout*time.Second, cfg.TCPProxyReadTimeout*time.Second)
+	return tc
 }
 
 // Get is used to fetch connection records from tcp proxy.
-func (t *TCPProxy) Get(ctx context.Context, recordsC chan<- []*TCPProxyConn, errC chan<- error) {
-	url := fmt.Sprintf("http://%s/conns?json=true", t.MgmtAddress)
+func (tc *TCPProxyClient) Get(ctx context.Context, recordsC chan<- []*TCPProxyConn, errC chan<- error) {
+	url := fmt.Sprintf("http://%s/conns?json=true", tc.MgmtAddress)
 	log.Infof("Requesting to tcpproxy %s\n", url)
-	response, err := t.HTTPClient.Get(url)
+	response, err := tc.HTTPClient.Get(url)
 	if err != nil {
 		errC <- err
 		return
