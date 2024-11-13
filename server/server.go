@@ -28,6 +28,8 @@ type Server struct {
 	PrometheusMetric *PrometheusMetric
 	Processes        []Process // todo: bad naming.
 	Client           *Client
+
+	AgentPort uint32
 }
 
 // NewServer is used to create a new Server type
@@ -38,6 +40,8 @@ func NewServer(cfg *config.Config) *Server {
 	s.PrometheusMetric = NewPrometheusMetric(s)
 	s.Processes = make([]Process, 0)
 	s.Client = NewClient(*s.Config)
+
+	s.AgentPort = cfg.Server.AgentPort
 	return s
 }
 

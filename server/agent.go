@@ -5,33 +5,29 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"kimo/config"
 	"kimo/types"
 	"net/http"
-	"time"
 
 	"github.com/cenkalti/log"
 )
 
-// Agent is agent client to fetch agent process from a kimo agent
-type Agent struct {
-	ConnectTimeout time.Duration
-	ReadTimeout    time.Duration
-	Port           uint32
+// AgentClient is agent client to fetch agent process from a kimo agent
+type AgentClient struct {
+	Host string
+	Port uint32
 }
 
-// NewAgent is constructor function for creating Agent object
-func NewAgent(cfg config.Server) *Agent {
-	a := new(Agent)
-	a.Port = cfg.AgentPort
-	a.ConnectTimeout = cfg.AgentConnectTimeout
-	a.ReadTimeout = cfg.AgentReadTimeout
+// NewAgentClient is constructor function for creating Agent object
+func NewAgentClient(host string, port uint32) *AgentClient {
+	a := new(AgentClient)
+	a.Host = host
+	a.Port = port
 	return a
 }
 
 // Fetch is used to fetch agent process
-func (a *Agent) Fetch(ctx context.Context, host string, port uint32) (*types.AgentProcess, error) {
-	url := fmt.Sprintf("http://%s:%d/proc?port=%d", host, a.Port, port)
+func (ac *AgentClient) Get(ctx context.Context, port uint32) (*types.AgentProcess, error) {
+	url := fmt.Sprintf("http://%s:%d/proc?port=%d", ac.Host, ac.Port, port)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		log.Fatal(err)

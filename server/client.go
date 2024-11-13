@@ -15,7 +15,8 @@ import (
 type Client struct {
 	Mysql    *Mysql
 	TCPProxy *TCPProxy
-	Agent    *Agent
+
+	AgentPort uint32
 }
 
 // KimoProcess is combined with processes from mysql to agent through tcpproxy
@@ -23,7 +24,6 @@ type KimoProcess struct {
 	AgentProcess *types.AgentProcess
 	MysqlRow     *MysqlRow
 	TCPProxyConn *TCPProxyConn
-	Agent        *Agent
 }
 
 type MysqlResult struct {
@@ -32,8 +32,7 @@ type MysqlResult struct {
 }
 
 // SetAgentProcess is used to set agent process of a KimoProcess
-func (kp *KimoProcess) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup) {
-	// todo: get rid of this function.
+func (c *Client) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup, kp *KimoProcess) {
 	defer wg.Done()
 	var host string
 	var port uint32
@@ -45,7 +44,9 @@ func (kp *KimoProcess) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup) 
 		host = kp.MysqlRow.Address.IP
 		port = kp.MysqlRow.Address.Port
 	}
-	ap, err := kp.Agent.Fetch(ctx, host, port)
+
+	ac := NewAgentClient(host, c.AgentPort)
+	ap, err := ac.Get(ctx, port)
 	if err != nil {
 		log.Debugln(err.Error())
 		kp.AgentProcess = &types.AgentProcess{
@@ -58,11 +59,12 @@ func (kp *KimoProcess) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup) 
 
 // NewClient is constructor fuction for creating a Client object
 func NewClient(cfg config.Server) *Client {
-	p := new(Client)
-	p.Mysql = NewMysql(cfg)
-	p.TCPProxy = NewTCPProxy(cfg)
-	p.Agent = NewAgent(cfg)
-	return p
+	c := new(Client)
+	c.Mysql = NewMysql(cfg)
+	c.TCPProxy = NewTCPProxy(cfg)
+	c.AgentPort = cfg.AgentPort
+
+	return c
 }
 
 func findHostIP(host string) (string, error) {
@@ -103,7 +105,6 @@ func (c *Client) initializeKimoProcesses(mps []*MysqlRow, tps []*TCPProxyConn) [
 		kps = append(kps, &KimoProcess{
 			MysqlRow:     mp,
 			TCPProxyConn: tpr,
-			Agent:        c.Agent,
 		})
 	}
 	log.Infof("%d processes are initialized \n", len(kps))
@@ -147,7 +148,7 @@ func (c *Client) setAgentProcesses(ctx context.Context, kps []*KimoProcess) {
 	var wg sync.WaitGroup
 	for _, kp := range kps {
 		wg.Add(1)
-		go kp.SetAgentProcess(ctx, &wg)
+		go c.SetAgentProcess(ctx, &wg, kp)
 	}
 	wg.Wait()
 	log.Infoln("Generating process is done...")
