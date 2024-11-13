@@ -12,8 +12,8 @@ import (
 	_ "github.com/go-sql-driver/mysql" // imports mysql driver
 )
 
-// MysqlProcess is the process type in terms of MySQL context (a row from processlist table)
-type MysqlProcess struct {
+// MysqlRow is a row from processlist table
+type MysqlRow struct {
 	ID      int32          `json:"id"`
 	User    string         `json:"user"`
 	DB      sql.NullString `json:"db"`
@@ -34,11 +34,11 @@ func NewMysql(cfg config.Server) *Mysql {
 // Mysql is used to get processes from mysql.
 type Mysql struct {
 	DSN       string
-	Processes []MysqlProcess
+	MysqlRows []MysqlRow
 }
 
-// Fetch is used to fetch processlist table from information_schema.
-func (m *Mysql) Fetch(ctx context.Context, procsC chan<- []*MysqlProcess, errC chan<- error) {
+// Get is used to fetch processlist table from information_schema.
+func (m *Mysql) Get(ctx context.Context, procsC chan<- []*MysqlRow, errC chan<- error) {
 	log.Infoln("Requesting to mysql...")
 	db, err := sql.Open("mysql", m.DSN)
 
@@ -56,9 +56,9 @@ func (m *Mysql) Fetch(ctx context.Context, procsC chan<- []*MysqlProcess, errC c
 		return
 	}
 
-	mps := make([]*MysqlProcess, 0)
+	mps := make([]*MysqlRow, 0)
 	for results.Next() {
-		var mp MysqlProcess
+		var mp MysqlRow
 		var host string
 
 		err = results.Scan(&mp.ID, &mp.User, &host, &mp.DB, &mp.Command, &mp.Time, &mp.State, &mp.Info)

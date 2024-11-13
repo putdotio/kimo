@@ -13,17 +13,17 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// TCPProxyRecord is type for defining a connection through TCP Proxy to MySQL
-type TCPProxyRecord struct {
+// TCPProxyResult is type for defining a connection through TCP Proxy to MySQL
+type TCPProxyConn struct {
 	ClientOut types.IPPort `json:"client_out"`
 	ProxyIn   types.IPPort `json:"proxy_in"`
 	ProxyOut  types.IPPort `json:"proxy_out"`
 	ServerIn  types.IPPort `json:"server_in"`
 }
 
-// TCPConns is a type for TCP Proxy management api response
-type TCPConns struct {
-	Records []*TCPProxyRecord `json:"conns"`
+// TCPConnResponse is a type for TCP Proxy management api response
+type TCPConnResponse struct {
+	Records []*TCPProxyConn `json:"conns"`
 }
 
 // TCPProxy is used for getting info from tcp proxy
@@ -40,8 +40,8 @@ func NewTCPProxy(cfg config.Server) *TCPProxy {
 	return t
 }
 
-// Fetch is used to fetch connection records from tcp proxy.
-func (t *TCPProxy) Fetch(ctx context.Context, recordsC chan<- []*TCPProxyRecord, errC chan<- error) {
+// Get is used to fetch connection records from tcp proxy.
+func (t *TCPProxy) Get(ctx context.Context, recordsC chan<- []*TCPProxyConn, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns?json=true", t.MgmtAddress)
 	log.Infof("Requesting to tcpproxy %s\n", url)
 	response, err := t.HTTPClient.Get(url)
@@ -56,7 +56,7 @@ func (t *TCPProxy) Fetch(ctx context.Context, recordsC chan<- []*TCPProxyRecord,
 		return
 	}
 
-	var conns TCPConns
+	var conns TCPConnResponse
 	err = json.NewDecoder(response.Body).Decode(&conns)
 	if err != nil {
 		log.Errorln("Can not decode conns")
