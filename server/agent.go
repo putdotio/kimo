@@ -30,7 +30,7 @@ func (ac *AgentClient) Get(ctx context.Context, port uint32) (*types.AgentProces
 	url := fmt.Sprintf("http://%s:%d/proc?port=%d", ac.Host, ac.Port, port)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	client := &http.Client{}
 	log.Debugf("Requesting to %s\n", url)
