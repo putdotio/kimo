@@ -16,7 +16,7 @@ import (
 
 // Response is type for returning a response from kimo server
 type Response struct {
-	Processes []Process `json:"processes"`
+	Processes []KimoProcess `json:"processes"`
 }
 
 // NewHTTPClient returns a http client with custom connect & read timeout
@@ -37,22 +37,22 @@ func NewHTTPClient(connectTimeout, readTimeout time.Duration) *http.Client {
 func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
 	forceParam := req.URL.Query().Get("force")
 	fetch := false
-	if forceParam == "true" || len(s.Processes) == 0 {
+	if forceParam == "true" || len(s.KimoProcesses) == 0 {
 		fetch = true
 	}
 
 	if fetch {
-		s.FetchAll()
+		s.Get()
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "access-control-allow-origin, access-control-allow-headers")
 
-	log.Infof("Returning response with %d kimo processes...\n", len(s.Processes))
+	log.Infof("Returning response with %d kimo processes...\n", len(s.KimoProcesses))
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &Response{
-		Processes: s.Processes,
+		Processes: s.KimoProcesses,
 	}
 	err := json.NewEncoder(w).Encode(response)
 	if err != nil {

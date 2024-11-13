@@ -8,8 +8,8 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// Process is the final processes that is combined with AgentProcess + TCPProxyRecord + MysqlProcess
-type Process struct {
+// KimoProcess is the final processes that is combined with AgentProcess + TCPProxyRecord + MysqlProcess
+type KimoProcess struct {
 	ID        int32    `json:"id"`
 	MysqlUser string   `json:"mysql_user"`
 	DB        string   `json:"db"`
@@ -26,7 +26,7 @@ type Process struct {
 type Server struct {
 	Config           *config.Server
 	PrometheusMetric *PrometheusMetric
-	Processes        []Process // todo: bad naming.
+	KimoProcesses    []KimoProcess
 	Client           *Client
 
 	AgentPort uint32
@@ -38,15 +38,15 @@ func NewServer(cfg *config.Config) *Server {
 	s := new(Server)
 	s.Config = &cfg.Server
 	s.PrometheusMetric = NewPrometheusMetric(s)
-	s.Processes = make([]Process, 0)
+	s.KimoProcesses = make([]KimoProcess, 0)
 	s.Client = NewClient(*s.Config)
 
 	s.AgentPort = cfg.Server.AgentPort
 	return s
 }
 
-// FetchAll fetches all processes through Client object
-func (s *Server) FetchAll() {
+// Get gets all processes
+func (s *Server) Get() {
 	// todo: call with lock
 	// todo: prevent race condition
 	// todo: if a fetch is in progress and a new fetch is triggered, cancel the existing one.
@@ -58,8 +58,8 @@ func (s *Server) FetchAll() {
 		log.Error(err.Error())
 		return
 	}
-	s.Processes = ps
-	log.Debugf("%d processes are set\n", len(s.Processes))
+	s.KimoProcesses = ps
+	log.Debugf("%d processes are set\n", len(s.KimoProcesses))
 }
 
 func (s *Server) setMetrics() {
@@ -71,11 +71,11 @@ func (s *Server) pollAgents() {
 	ticker := time.NewTicker(s.Config.PollDuration * time.Second)
 
 	for {
-		s.FetchAll() // poll immediately at initialization
+		s.Get() // poll immediately at initialization
 		select {
 		// todo: add return case
 		case <-ticker.C:
-			s.FetchAll()
+			s.Get()
 		}
 	}
 

@@ -87,11 +87,11 @@ func (pm *PrometheusMetric) SetMetrics() {
 
 // Set sets all metrics based on Processes
 func (pm *PrometheusMetric) Set() {
-	ps := pm.Server.Processes
+	ps := pm.Server.KimoProcesses
 	if len(ps) == 0 {
 		return
 	}
-	log.Debugf("Found '%d' processes. Setting metrics...\n", len(pm.Server.Processes))
+	log.Debugf("Found '%d' processes. Setting metrics...\n", len(pm.Server.KimoProcesses))
 	pm.conns.Set(float64(len(ps)))
 
 	// todo: too much duplication

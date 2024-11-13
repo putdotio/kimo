@@ -19,41 +19,39 @@ type Client struct {
 	AgentPort uint32
 }
 
-// KimoProcess is combined with processes from mysql to agent through tcpproxy
-type KimoProcess struct {
-	AgentProcess *types.AgentProcess
+type MysqlProxyResult struct {
 	MysqlRow     *MysqlRow
 	TCPProxyConn *TCPProxyConn
 }
 
-type MysqlResult struct {
-	MysqlRows     []*MysqlRow
-	TCPProxyConns []*TCPProxyConn
+type AgentResult struct {
+	*MysqlProxyResult
+	AgentProcess *types.AgentProcess
 }
 
-// SetAgentProcess is used to set agent process of a KimoProcess
-func (c *Client) SetAgentProcess(ctx context.Context, wg *sync.WaitGroup, kp *KimoProcess) {
+// GetAgentProcess get agent processes
+func (c *Client) GetAgentProcess(ctx context.Context, wg *sync.WaitGroup, ar *AgentResult) {
 	defer wg.Done()
 	var host string
 	var port uint32
 
-	if kp.TCPProxyConn != nil {
-		host = kp.TCPProxyConn.ClientOut.IP
-		port = kp.TCPProxyConn.ClientOut.Port
+	if ar.MysqlProxyResult.TCPProxyConn != nil {
+		host = ar.TCPProxyConn.ClientOut.IP
+		port = ar.TCPProxyConn.ClientOut.Port
 	} else {
-		host = kp.MysqlRow.Address.IP
-		port = kp.MysqlRow.Address.Port
+		host = ar.MysqlRow.Address.IP
+		port = ar.MysqlRow.Address.Port
 	}
 
 	ac := NewAgentClient(host, c.AgentPort)
 	ap, err := ac.Get(ctx, port)
 	if err != nil {
 		log.Debugln(err.Error())
-		kp.AgentProcess = &types.AgentProcess{
+		ar.AgentProcess = &types.AgentProcess{
 			Hostname: "ERROR",
 		}
 	} else {
-		kp.AgentProcess = ap
+		ar.AgentProcess = ap
 	}
 }
 
@@ -94,24 +92,24 @@ func findTCPProxyRecord(addr types.IPPort, proxyRecords []*TCPProxyConn) *TCPPro
 	return nil
 }
 
-func (c *Client) initializeKimoProcesses(mps []*MysqlRow, tps []*TCPProxyConn) []*KimoProcess {
+func (c *Client) combineMysqlAndProxyResults(rows []*MysqlRow, conns []*TCPProxyConn) []*MysqlProxyResult {
 	log.Infoln("Initializing Kimo processes...")
-	var kps []*KimoProcess
-	for _, mp := range mps {
-		tpr := findTCPProxyRecord(mp.Address, tps)
-		if tpr == nil {
+	var mprs []*MysqlProxyResult
+	for _, row := range rows {
+		conn := findTCPProxyRecord(row.Address, conns)
+		if conn == nil {
 			continue
 		}
-		kps = append(kps, &KimoProcess{
-			MysqlRow:     mp,
-			TCPProxyConn: tpr,
+		mprs = append(mprs, &MysqlProxyResult{
+			MysqlRow:     row,
+			TCPProxyConn: conn,
 		})
 	}
-	log.Infof("%d processes are initialized \n", len(kps))
-	return kps
+	log.Infof("%d processes are initialized \n", len(mprs))
+	return mprs
 }
 
-func (c *Client) getMysqlResult(ctx context.Context) (*MysqlResult, error) {
+func (c *Client) getMysqlProxyResult(ctx context.Context) ([]*MysqlProxyResult, error) {
 	var mps []*MysqlRow
 	var tps []*TCPProxyConn
 
@@ -127,12 +125,12 @@ func (c *Client) getMysqlResult(ctx context.Context) (*MysqlResult, error) {
 		case mpsResp := <-mpsC:
 			mps = mpsResp
 			if tps != nil {
-				return &MysqlResult{MysqlRows: mps, TCPProxyConns: tps}, nil
+				return c.combineMysqlAndProxyResults(mps, tps), nil
 			}
 		case tpsResp := <-tpsC:
 			tps = tpsResp
 			if mps != nil {
-				return &MysqlResult{MysqlRows: mps, TCPProxyConns: tps}, nil
+				return c.combineMysqlAndProxyResults(mps, tps), nil
 			}
 		case err := <-errC:
 			log.Errorf("Error occured: %s", err.Error())
@@ -143,57 +141,56 @@ func (c *Client) getMysqlResult(ctx context.Context) (*MysqlResult, error) {
 	}
 }
 
-func (c *Client) setAgentProcesses(ctx context.Context, kps []*KimoProcess) {
-	log.Infof("Generating %d kimo processes...\n", len(kps))
-	var wg sync.WaitGroup
-	for _, kp := range kps {
-		wg.Add(1)
-		go c.SetAgentProcess(ctx, &wg, kp)
-	}
-	wg.Wait()
-	log.Infoln("Generating process is done...")
-}
-
-func (c *Client) createProcesses(kps []*KimoProcess) []Process {
-	ps := make([]Process, 0)
-	for _, kp := range kps {
-		ut, err := strconv.ParseUint(kp.MysqlRow.Time, 10, 32)
+func (c *Client) createKimoProcesses(ars []*AgentResult) []KimoProcess {
+	kps := make([]KimoProcess, 0)
+	for _, ar := range ars {
+		ut, err := strconv.ParseUint(ar.MysqlRow.Time, 10, 32)
 		if err != nil {
-			log.Errorf("time %s could not be converted to int", kp.MysqlRow.Time)
+			log.Errorf("time %s could not be converted to int", ar.MysqlRow.Time)
 		}
-		ps = append(ps, Process{
-			ID:        kp.MysqlRow.ID,
-			MysqlUser: kp.MysqlRow.User,
-			DB:        kp.MysqlRow.DB.String,
-			Command:   kp.MysqlRow.Command,
+		kps = append(kps, KimoProcess{
+			ID:        ar.MysqlRow.ID,
+			MysqlUser: ar.MysqlRow.User,
+			DB:        ar.MysqlRow.DB.String,
+			Command:   ar.MysqlRow.Command,
 			Time:      uint32(ut),
-			State:     kp.MysqlRow.State.String,
-			Info:      kp.MysqlRow.Info.String,
-			CmdLine:   kp.AgentProcess.CmdLine,
-			Pid:       kp.AgentProcess.Pid,
-			Host:      kp.AgentProcess.Hostname,
+			State:     ar.MysqlRow.State.String,
+			Info:      ar.MysqlRow.Info.String,
+			CmdLine:   ar.AgentProcess.CmdLine,
+			Pid:       ar.AgentProcess.Pid,
+			Host:      ar.AgentProcess.Hostname,
 		})
 	}
-	return ps
+	return kps
 }
 
 // FetchAll is used to create processes from mysql to agents
-func (c *Client) FetchAll(ctx context.Context) ([]Process, error) {
+func (c *Client) FetchAll(ctx context.Context) ([]KimoProcess, error) {
 	log.Debugf("Fetching...")
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	mysqlResult, err := c.getMysqlResult(ctx)
+	mysqlProxyResult, err := c.getMysqlProxyResult(ctx)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, err
 	}
 
-	kps := c.initializeKimoProcesses(mysqlResult.MysqlRows, mysqlResult.TCPProxyConns)
+	log.Infof("Getting processes from %s agents...\n", len(mysqlProxyResult))
+	var wg sync.WaitGroup
+	var ars []*AgentResult
+	for _, mpr := range mysqlProxyResult {
+		ar := &AgentResult{MysqlProxyResult: mpr}
+		ars = append(ars, ar)
 
-	c.setAgentProcesses(ctx, kps)
-	ps := c.createProcesses(kps)
+		wg.Add(1)
+		go c.GetAgentProcess(ctx, &wg, ar)
+	}
+	wg.Wait()
+	log.Infoln("Generating process is done...")
+
+	ps := c.createKimoProcesses(ars)
 
 	log.Debugf("%d processes are generated \n", len(ps))
 	return ps, nil
