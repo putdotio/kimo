@@ -93,7 +93,7 @@ func findTCPProxyRecord(addr types.IPPort, proxyRecords []*TCPProxyConn) *TCPPro
 }
 
 func (c *Client) combineMysqlAndProxyResults(rows []*MysqlRow, conns []*TCPProxyConn) []*MysqlProxyResult {
-	log.Infoln("Initializing Kimo processes...")
+	log.Infoln("Combining mysql and tcpproxy results...")
 	var mprs []*MysqlProxyResult
 	for _, row := range rows {
 		conn := findTCPProxyRecord(row.Address, conns)
@@ -105,7 +105,7 @@ func (c *Client) combineMysqlAndProxyResults(rows []*MysqlRow, conns []*TCPProxy
 			TCPProxyConn: conn,
 		})
 	}
-	log.Infof("%d processes are initialized \n", len(mprs))
+	log.Infof("%d results are combined \n", len(mprs))
 	return mprs
 }
 
