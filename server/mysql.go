@@ -81,6 +81,5 @@ func (mc *MysqlClient) Get(ctx context.Context) ([]*MysqlRow, error) {
 		}
 		mps = append(mps, &mp)
 	}
-	log.Infof("Got %d mysql processes \n", len(mps))
 	return mps, nil
 }

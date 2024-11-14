@@ -62,7 +62,6 @@ func (tc *TCPProxyClient) Get(ctx context.Context) ([]*TCPProxyConn, error) {
 		log.Errorln("Can not decode conns")
 		return nil, errors.New("can not decode tcpproxy response")
 	}
-	log.Infof("Got %d TCP proxy records \n", len(conns.Records))
 	return conns.Records, nil
 }
 

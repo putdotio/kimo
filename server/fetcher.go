@@ -36,7 +36,7 @@ func NewFetcher(cfg config.Server) *Fetcher {
 
 // GetAgentProcesses gets processes from kimo agents
 func (f *Fetcher) GetAgentProcesses(ctx context.Context, rows []*MysqlRow) []*RawProcess {
-	log.Infof("Getting processes from %s agents...\n", len(rows))
+	log.Infof("Getting processes from %d agents...\n", len(rows))
 	var wg sync.WaitGroup
 	var rps []*RawProcess
 	for _, row := range rows {
@@ -47,7 +47,7 @@ func (f *Fetcher) GetAgentProcesses(ctx context.Context, rows []*MysqlRow) []*Ra
 		go f.getAgentProcess(ctx, &wg, rp)
 	}
 	wg.Wait()
-	log.Infoln("Generating process is done...")
+	log.Infoln("Generating raw process is done...")
 
 	return rps
 }
@@ -68,7 +68,7 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 }
 
 func (f *Fetcher) updateProxyFields(rows []*MysqlRow, conns []*TCPProxyConn) {
-	log.Infoln("Combining mysql and tcpproxy results...")
+	log.Infoln("Updating hosts based on tcpproxy...")
 	var updated int
 	for _, row := range rows {
 		conn := findTCPProxyConn(row.Address, conns)
@@ -81,7 +81,7 @@ func (f *Fetcher) updateProxyFields(rows []*MysqlRow, conns []*TCPProxyConn) {
 		row.Address.IP = conn.ClientOut.IP
 		row.Address.Port = conn.ClientOut.Port
 	}
-	log.Infof("%d results are updated \n", updated)
+	log.Infof("%d rows are updated \n", updated)
 }
 
 func (f *Fetcher) createKimoProcesses(rps []*RawProcess) []KimoProcess {
@@ -119,6 +119,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]KimoProcess, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("Got %d mysql rows \n", len(rows))
 
 	// TODO: check tcpproxy config first and then call Get.
 	log.Infoln("Getting tcpproxy results...")
@@ -126,6 +127,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]KimoProcess, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("Got %d tcpproxy conns \n", len(tps))
 
 	f.updateProxyFields(rows, tps)
 
