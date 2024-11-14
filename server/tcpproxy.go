@@ -38,33 +38,29 @@ func NewTCPProxyClient(cfg config.Server) *TCPProxyClient {
 }
 
 // Get is used to fetch connection records from tcp proxy.
-func (tc *TCPProxyClient) Get(ctx context.Context, recordsC chan<- []*TCPProxyConn, errC chan<- error) {
+func (tc *TCPProxyClient) Get(ctx context.Context) ([]*TCPProxyConn, error) {
 	url := fmt.Sprintf("http://%s/conns?json=true", tc.MgmtAddress)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		errC <- err
-		return
+		return nil, err
 	}
 	client := &http.Client{}
-	log.Infof("Requesting to tcpproxy %s\n", url)
 	response, err := client.Do(req)
 	if err != nil {
-		errC <- err
-		return
+		return nil, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		log.Errorf("Error: %s\n", response.Status)
-		errC <- errors.New("status code is not 200")
-		return
+		return nil, errors.New("status code is not 200")
 	}
 
 	var conns TCPConnResponse
 	err = json.NewDecoder(response.Body).Decode(&conns)
 	if err != nil {
 		log.Errorln("Can not decode conns")
-		errC <- errors.New("can not decode tcpproxy response")
+		return nil, errors.New("can not decode tcpproxy response")
 	}
 	log.Infof("Got %d TCP proxy records \n", len(conns.Records))
-	recordsC <- conns.Records
+	return conns.Records, nil
 }

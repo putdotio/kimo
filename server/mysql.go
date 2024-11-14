@@ -38,22 +38,21 @@ type MysqlClient struct {
 }
 
 // Get is used to fetch processlist table from information_schema.
-func (mc *MysqlClient) Get(ctx context.Context, procsC chan<- []*MysqlRow, errC chan<- error) {
-	log.Infoln("Requesting to mysql...")
+func (mc *MysqlClient) Get(ctx context.Context) ([]*MysqlRow, error) {
 	db, err := sql.Open("mysql", mc.DSN)
 
 	if err != nil {
-		errC <- err
+		return nil, err
 	}
 	defer db.Close()
 
 	results, err := db.Query("select * from PROCESSLIST")
 	if err != nil {
-		errC <- err
+		return nil, err
 	}
 
 	if results == nil {
-		return
+		return nil, err
 	}
 
 	mps := make([]*MysqlRow, 0)
@@ -64,7 +63,7 @@ func (mc *MysqlClient) Get(ctx context.Context, procsC chan<- []*MysqlRow, errC 
 		err = results.Scan(&mp.ID, &mp.User, &host, &mp.DB, &mp.Command, &mp.Time, &mp.State, &mp.Info)
 
 		if err != nil {
-			errC <- err
+			return nil, err
 		}
 		s := strings.Split(host, ":")
 		if len(s) < 2 {
@@ -83,5 +82,5 @@ func (mc *MysqlClient) Get(ctx context.Context, procsC chan<- []*MysqlRow, errC 
 		mps = append(mps, &mp)
 	}
 	log.Infof("Got %d mysql processes \n", len(mps))
-	procsC <- mps
+	return mps, nil
 }
