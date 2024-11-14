@@ -120,12 +120,8 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if ap == nil {
-		err = json.NewEncoder(w).Encode(&types.AgentProcess{
-			Hostname: a.Hostname,
-		})
-		if err != nil {
-			http.Error(w, "Can not create agent process", http.StatusInternalServerError)
-		}
+		w.Header().Set("X-Hostname", a.Hostname)
+		http.Error(w, "Can not create agent process", http.StatusNotFound)
 		return
 	}
 	err = json.NewEncoder(w).Encode(&ap)

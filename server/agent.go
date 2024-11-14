@@ -17,6 +17,14 @@ type AgentClient struct {
 	Port uint32
 }
 
+type NotFoundError struct {
+	Host string
+}
+
+func (n *NotFoundError) Error() string {
+	return fmt.Sprintf("Host %s returned 404\n", n.Host)
+}
+
 // NewAgentClient is constructor function for creating Agent object
 func NewAgentClient(host string, port uint32) *AgentClient {
 	ac := new(AgentClient)
@@ -41,6 +49,12 @@ func (ac *AgentClient) Get(ctx context.Context, port uint32) (*types.AgentProces
 
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
+		if response.StatusCode == 404 {
+			hostname := response.Header.Get("X-Hostname")
+			if hostname != "" {
+				return nil, &NotFoundError{Host: hostname}
+			}
+		}
 		log.Debugf("Error: %s -> %s\n", url, response.Status)
 		return nil, errors.New("status code is not 200")
 	}

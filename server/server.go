@@ -20,6 +20,7 @@ type KimoProcess struct {
 	CmdLine   []string `json:"cmdline"`
 	Pid       int32    `json:"pid"`
 	Host      string   `json:"host"`
+	Detail    string   `json:"detail"`
 }
 
 // Server is a type for handling server side operations
