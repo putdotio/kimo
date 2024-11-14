@@ -8,7 +8,6 @@ import (
 	"kimo/config"
 	"kimo/types"
 	"net/http"
-	"time"
 
 	"github.com/cenkalti/log"
 )
@@ -29,22 +28,26 @@ type TCPConnResponse struct {
 // TCPProxyClient is used for getting info from tcp proxy
 type TCPProxyClient struct {
 	MgmtAddress string
-	HTTPClient  *http.Client
 }
 
 // NewTCPProxy is used to create a new TCPProxy
 func NewTCPProxyClient(cfg config.Server) *TCPProxyClient {
 	tc := new(TCPProxyClient)
 	tc.MgmtAddress = cfg.TCPProxyMgmtAddress
-	tc.HTTPClient = NewHTTPClient(cfg.TCPProxyConnectTimeout*time.Second, cfg.TCPProxyReadTimeout*time.Second)
 	return tc
 }
 
 // Get is used to fetch connection records from tcp proxy.
 func (tc *TCPProxyClient) Get(ctx context.Context, recordsC chan<- []*TCPProxyConn, errC chan<- error) {
 	url := fmt.Sprintf("http://%s/conns?json=true", tc.MgmtAddress)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		errC <- err
+		return
+	}
+	client := &http.Client{}
 	log.Infof("Requesting to tcpproxy %s\n", url)
-	response, err := tc.HTTPClient.Get(url)
+	response, err := client.Do(req)
 	if err != nil {
 		errC <- err
 		return
