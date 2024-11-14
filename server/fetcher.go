@@ -4,7 +4,6 @@ import (
 	"context"
 	"kimo/config"
 	"kimo/types"
-	"net"
 	"strconv"
 	"sync"
 
@@ -19,13 +18,41 @@ type Fetcher struct {
 	AgentPort uint32
 }
 
+// RawProcess combines mysql row and agent process
 type RawProcess struct {
 	MysqlRow     *MysqlRow
 	AgentProcess *types.AgentProcess
 }
 
-// GetAgentProcess get agent processes
-func (f *Fetcher) GetAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *RawProcess) {
+// NewFetcher is constructor fuction for creating a new Fetcher object
+func NewFetcher(cfg config.Server) *Fetcher {
+	f := new(Fetcher)
+	f.MysqlClient = NewMysqlClient(cfg)
+	f.TCPProxyClient = NewTCPProxyClient(cfg)
+	f.AgentPort = cfg.AgentPort
+
+	return f
+}
+
+// GetAgentProcesses gets processes from kimo agents
+func (f *Fetcher) GetAgentProcesses(ctx context.Context, rows []*MysqlRow) []*RawProcess {
+	log.Infof("Getting processes from %s agents...\n", len(rows))
+	var wg sync.WaitGroup
+	var rps []*RawProcess
+	for _, row := range rows {
+		rp := &RawProcess{MysqlRow: row}
+		rps = append(rps, rp)
+
+		wg.Add(1)
+		go f.getAgentProcess(ctx, &wg, rp)
+	}
+	wg.Wait()
+	log.Infoln("Generating process is done...")
+
+	return rps
+}
+
+func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *RawProcess) {
 	defer wg.Done()
 
 	ac := NewAgentClient(rp.MysqlRow.Address.IP, f.AgentPort)
@@ -40,48 +67,11 @@ func (f *Fetcher) GetAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 	}
 }
 
-// NewFetcher is constructor fuction for creating a new Fetcher object
-func NewFetcher(cfg config.Server) *Fetcher {
-	f := new(Fetcher)
-	f.MysqlClient = NewMysqlClient(cfg)
-	f.TCPProxyClient = NewTCPProxyClient(cfg)
-	f.AgentPort = cfg.AgentPort
-
-	return f
-}
-
-func findHostIP(host string) (string, error) {
-	ip := net.ParseIP(host)
-	if ip == nil {
-		ips, err := net.LookupIP(host)
-		if err != nil {
-			return "", err
-		}
-		return string(ips[0].String()), nil
-	}
-	return ip.String(), nil
-}
-
-func findTCPProxyRecord(addr types.IPPort, proxyRecords []*TCPProxyConn) *TCPProxyConn {
-	ipAddr, err := findHostIP(addr.IP)
-	if err != nil {
-		log.Debugln(err.Error())
-		return nil
-	}
-
-	for _, pr := range proxyRecords {
-		if pr.ProxyOut.IP == ipAddr && pr.ProxyOut.Port == addr.Port {
-			return pr
-		}
-	}
-	return nil
-}
-
 func (f *Fetcher) updateProxyFields(rows []*MysqlRow, conns []*TCPProxyConn) {
 	log.Infoln("Combining mysql and tcpproxy results...")
 	var updated int
 	for _, row := range rows {
-		conn := findTCPProxyRecord(row.Address, conns)
+		conn := findTCPProxyConn(row.Address, conns)
 		if conn == nil {
 			continue
 		}
@@ -139,19 +129,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]KimoProcess, error) {
 
 	f.updateProxyFields(rows, tps)
 
-	log.Infof("Getting processes from %s agents...\n", len(rows))
-	var wg sync.WaitGroup
-	var rps []*RawProcess
-	for _, row := range rows {
-		rp := &RawProcess{MysqlRow: row}
-		rps = append(rps, rp)
-
-		wg.Add(1)
-		go f.GetAgentProcess(ctx, &wg, rp)
-	}
-	wg.Wait()
-	log.Infoln("Generating process is done...")
-
+	rps := f.GetAgentProcesses(ctx, rows)
 	ps := f.createKimoProcesses(rps)
 
 	log.Debugf("%d processes are generated \n", len(ps))

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"kimo/config"
 	"kimo/types"
+	"net"
 	"net/http"
 
 	"github.com/cenkalti/log"
@@ -63,4 +64,31 @@ func (tc *TCPProxyClient) Get(ctx context.Context) ([]*TCPProxyConn, error) {
 	}
 	log.Infof("Got %d TCP proxy records \n", len(conns.Records))
 	return conns.Records, nil
+}
+
+func findHostIP(host string) (string, error) {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return "", err
+		}
+		return string(ips[0].String()), nil
+	}
+	return ip.String(), nil
+}
+
+func findTCPProxyConn(addr types.IPPort, proxyConns []*TCPProxyConn) *TCPProxyConn {
+	ipAddr, err := findHostIP(addr.IP)
+	if err != nil {
+		log.Debugln(err.Error())
+		return nil
+	}
+
+	for _, conn := range proxyConns {
+		if conn.ProxyOut.IP == ipAddr && conn.ProxyOut.Port == addr.Port {
+			return conn
+		}
+	}
+	return nil
 }
