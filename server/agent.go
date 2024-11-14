@@ -19,10 +19,10 @@ type AgentClient struct {
 
 // NewAgentClient is constructor function for creating Agent object
 func NewAgentClient(host string, port uint32) *AgentClient {
-	a := new(AgentClient)
-	a.Host = host
-	a.Port = port
-	return a
+	ac := new(AgentClient)
+	ac.Host = host
+	ac.Port = port
+	return ac
 }
 
 // Fetch is used to fetch agent process
