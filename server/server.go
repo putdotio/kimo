@@ -8,7 +8,7 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// KimoProcess is the final processes that is combined with AgentProcess + TCPProxyRecord + MysqlProcess
+// KimoProcess is the final process that is combined with AgentProcess + TCPProxyConn + MysqlProcess
 type KimoProcess struct {
 	ID        int32    `json:"id"`
 	MysqlUser string   `json:"mysql_user"`
@@ -22,7 +22,7 @@ type KimoProcess struct {
 	Host      string   `json:"host"`
 }
 
-// Server is a type for handling server side
+// Server is a type for handling server side operations
 type Server struct {
 	Config           *config.Server
 	PrometheusMetric *PrometheusMetric
@@ -32,7 +32,7 @@ type Server struct {
 	AgentPort uint32
 }
 
-// NewServer is used to create a new Server type
+// NewServer is used to create a new Server object
 func NewServer(cfg *config.Config) *Server {
 	log.Infoln("Creating a new server...")
 	s := new(Server)
@@ -45,8 +45,8 @@ func NewServer(cfg *config.Config) *Server {
 	return s
 }
 
-// Get gets all processes
-func (s *Server) Get() {
+// GetProcesses gets all processes
+func (s *Server) GetProcesses() {
 	// todo: call with lock
 	// todo: prevent race condition
 	// todo: if a fetch is in progress and a new fetch is triggered, cancel the existing one.
@@ -71,11 +71,11 @@ func (s *Server) pollAgents() {
 	ticker := time.NewTicker(s.Config.PollDuration * time.Second)
 
 	for {
-		s.Get() // poll immediately at initialization
+		s.GetProcesses() // poll immediately at initialization
 		select {
 		// todo: add return case
 		case <-ticker.C:
-			s.Get()
+			s.GetProcesses()
 		}
 	}
 

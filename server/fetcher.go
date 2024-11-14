@@ -10,7 +10,7 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// Fetcher is used for creating process list
+// Fetcher fetches process info from mysql to kimo agent
 type Fetcher struct {
 	MysqlClient    *MysqlClient
 	TCPProxyClient *TCPProxyClient

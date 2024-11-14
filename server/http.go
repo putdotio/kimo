@@ -42,7 +42,7 @@ func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if fetch {
-		s.Get()
+		s.GetProcesses()
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
