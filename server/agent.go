@@ -25,6 +25,14 @@ func (n *NotFoundError) Error() string {
 	return fmt.Sprintf("Host %s returned 404\n", n.Host)
 }
 
+type CantConnectError struct {
+	Host string
+}
+
+func (c *CantConnectError) Error() string {
+	return fmt.Sprintf("Cant connect to %s\n", c.Host)
+}
+
 // NewAgentClient is constructor function for creating Agent object
 func NewAgentClient(host string, port uint32) *AgentClient {
 	ac := new(AgentClient)
@@ -44,7 +52,7 @@ func (ac *AgentClient) Get(ctx context.Context, port uint32) (*types.AgentProces
 	log.Debugf("Requesting to %s\n", url)
 	response, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, &CantConnectError{Host: ac.Host}
 	}
 
 	defer response.Body.Close()
@@ -62,7 +70,6 @@ func (ac *AgentClient) Get(ctx context.Context, port uint32) (*types.AgentProces
 	ap := types.AgentProcess{}
 	err = json.NewDecoder(response.Body).Decode(&ap)
 
-	// todo: consider NotFound
 	if err != nil {
 		log.Errorln(err.Error())
 		return nil, err

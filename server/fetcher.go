@@ -32,6 +32,7 @@ type Detail int
 const (
 	DetailAgentFound Detail = iota
 	DetailAgentNotFound
+	DetailAgentCantConnect
 	DetailAgentError
 	DetailProxyNotFound
 )
@@ -44,6 +45,8 @@ func (d Detail) String() string {
 		return "Agent errored"
 	case DetailAgentNotFound:
 		return "Not found on agent"
+	case DetailAgentCantConnect:
+		return "Cant connect to agent"
 	case DetailProxyNotFound:
 		return "Not found on proxy"
 	default:
@@ -74,7 +77,7 @@ func NewFetcher(cfg config.Server) *Fetcher {
 	return f
 }
 
-// GetAgentProcesses gets processes from kimo agents
+// GetAgentProcesseses gets processes from kimo agents
 func (f *Fetcher) GetAgentProcesses(ctx context.Context, rps []*RawProcess) {
 	log.Infof("Getting processes from %d agents...\n", len(rps))
 	var wg sync.WaitGroup
@@ -99,6 +102,11 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 			rp.AgentProcess = &types.AgentProcess{
 				Hostname: notFoundErr.Host,
 			}
+		} else if cantConnectErr, ok := err.(*CantConnectError); ok {
+			rp.Detail = DetailAgentCantConnect
+			rp.AgentProcess = &types.AgentProcess{
+				Hostname: cantConnectErr.Host,
+			}
 		} else {
 			rp.Detail = DetailAgentError
 		}
@@ -108,8 +116,8 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 	}
 }
 
-func (f *Fetcher) createRawProcess(rows []*MysqlRow, conns []*TCPProxyConn) []*RawProcess {
-	log.Infoln("Updating hosts based on tcpproxy...")
+func (f *Fetcher) createRawProcesses(rows []*MysqlRow, conns []*TCPProxyConn) []*RawProcess {
+	log.Infoln("Creating raw processes...")
 	var rps []*RawProcess
 	for _, row := range rows {
 		rp := &RawProcess{MysqlRow: row}
@@ -151,6 +159,8 @@ func (f *Fetcher) createKimoProcesses(rps []*RawProcess) []KimoProcess {
 
 			if rp.Detail == DetailAgentNotFound {
 				kp.Host = rp.AgentProcess.Hostname
+			} else if rp.Detail == DetailAgentCantConnect {
+				kp.Host = rp.AgentProcess.Hostname
 			}
 		}
 
@@ -182,7 +192,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]KimoProcess, error) {
 	}
 	log.Infof("Got %d tcpproxy conns \n", len(tps))
 
-	rps := f.createRawProcess(rows, tps)
+	rps := f.createRawProcesses(rows, tps)
 
 	f.GetAgentProcesses(ctx, rps)
 	ps := f.createKimoProcesses(rps)
