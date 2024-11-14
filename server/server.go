@@ -27,7 +27,7 @@ type Server struct {
 	Config           *config.Server
 	PrometheusMetric *PrometheusMetric
 	KimoProcesses    []KimoProcess
-	Client           *Client
+	Fetcher          *Fetcher
 
 	AgentPort uint32
 }
@@ -39,7 +39,7 @@ func NewServer(cfg *config.Config) *Server {
 	s.Config = &cfg.Server
 	s.PrometheusMetric = NewPrometheusMetric(s)
 	s.KimoProcesses = make([]KimoProcess, 0)
-	s.Client = NewClient(*s.Config)
+	s.Fetcher = NewFetcher(*s.Config)
 
 	s.AgentPort = cfg.Server.AgentPort
 	return s
@@ -53,7 +53,7 @@ func (s *Server) Get() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ps, err := s.Client.FetchAll(ctx)
+	ps, err := s.Fetcher.FetchAll(ctx)
 	if err != nil {
 		log.Error(err.Error())
 		return
