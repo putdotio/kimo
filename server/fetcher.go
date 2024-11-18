@@ -24,9 +24,21 @@ type RawProcess struct {
 	MysqlRow     *MysqlRow
 	TCPProxyConn *TCPProxyConn
 	AgentProcess *types.AgentProcess
-	Detail       *Detail
+	Details      []*Detail
 
 	AgentAddress types.IPPort
+}
+
+func (rp *RawProcess) Detail() string {
+	var s string
+	if rp.Details == nil {
+		return ""
+	}
+
+	for _, d := range rp.Details {
+		s += d.String() + " "
+	}
+	return s
 }
 
 type Detail struct {
@@ -36,7 +48,7 @@ type Detail struct {
 
 func (d *Detail) String() string {
 	if d.Hostname != "" {
-		return fmt.Sprintf("%s. Host: %s", d.Status.String(), d.Hostname)
+		return fmt.Sprintf("%s - Host: %s.", d.Status.String(), d.Hostname)
 	} else {
 		return fmt.Sprintf("%s.", d.Status.String())
 	}
@@ -83,13 +95,6 @@ func (f *Fetcher) GetAgentProcesses(ctx context.Context, rps []*RawProcess) {
 	for _, rp := range rps {
 		rps = append(rps, rp)
 
-		// there is no connection on tcpproxy for this raw process.
-		if rp.Detail != nil {
-			if rp.Detail.Status == StatusProxyNotFound {
-				continue
-			}
-		}
-
 		wg.Add(1)
 		go f.getAgentProcess(ctx, &wg, rp)
 	}
@@ -104,11 +109,11 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 	ap, err := ac.Get(ctx, rp.AgentAddress.Port)
 	if err != nil {
 		if notFoundErr, ok := err.(*NotFoundError); ok {
-			rp.Detail = &Detail{Status: StatusAgentNotFound, Hostname: notFoundErr.Host}
+			rp.Details = append(rp.Details, &Detail{Status: StatusAgentNotFound, Hostname: notFoundErr.Host})
 		} else if cantConnectErr, ok := err.(*CantConnectError); ok {
-			rp.Detail = &Detail{Status: StatusAgentCantConnect, Hostname: cantConnectErr.Host}
+			rp.Details = append(rp.Details, &Detail{Status: StatusAgentCantConnect, Hostname: cantConnectErr.Host})
 		} else {
-			rp.Detail = &Detail{Status: StatusAgentError}
+			rp.Details = append(rp.Details, &Detail{Status: StatusAgentError})
 		}
 	} else {
 		rp.AgentProcess = ap
@@ -123,7 +128,7 @@ func (f *Fetcher) combineMysqlAndProxyResults(rows []*MysqlRow, conns []*TCPProx
 		conn := findTCPProxyConn(row.Address, conns)
 		if conn == nil {
 			rp.AgentAddress = types.IPPort{IP: row.Address.IP, Port: row.Address.Port}
-			rp.Detail = &Detail{Status: StatusProxyNotFound}
+			rp.Details = append(rp.Details, &Detail{Status: StatusProxyNotFound})
 		} else {
 			rp.AgentAddress = types.IPPort{IP: conn.ClientOut.IP, Port: conn.ClientOut.Port}
 			rp.TCPProxyConn = conn
@@ -155,13 +160,8 @@ func (f *Fetcher) createKimoProcesses(rps []*RawProcess) []KimoProcess {
 			kp.Pid = rp.AgentProcess.Pid
 			kp.Host = rp.AgentProcess.Hostname
 		} else {
-			if rp.Detail != nil {
-				if rp.Detail.Status == StatusAgentNotFound {
-					kp.Host = rp.Detail.Hostname
-				} else if rp.Detail.Status == StatusAgentCantConnect {
-					kp.Host = rp.Detail.Hostname
-				}
-				kp.Detail = rp.Detail.String()
+			if rp.Details != nil {
+				kp.Detail = rp.Detail()
 			}
 		}
 
