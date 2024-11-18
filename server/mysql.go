@@ -46,7 +46,7 @@ func (mc *MysqlClient) Get(ctx context.Context) ([]*MysqlRow, error) {
 	}
 	defer db.Close()
 
-	results, err := db.Query("select * from PROCESSLIST")
+	results, err := db.QueryContext(ctx, "select * from PROCESSLIST")
 	if err != nil {
 		return nil, err
 	}
