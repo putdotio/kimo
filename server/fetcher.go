@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"kimo/config"
 	"kimo/types"
-	"strconv"
 	"sync"
 
 	"github.com/cenkalti/log"
@@ -139,40 +138,8 @@ func (f *Fetcher) combineMysqlAndProxyResults(rows []*MysqlRow, conns []*TCPProx
 	return rps
 }
 
-func (f *Fetcher) createKimoProcesses(rps []*RawProcess) []KimoProcess {
-	kps := make([]KimoProcess, 0)
-	for _, rp := range rps {
-		ut, err := strconv.ParseUint(rp.MysqlRow.Time, 10, 32)
-		if err != nil {
-			log.Errorf("time %s could not be converted to int", rp.MysqlRow.Time)
-		}
-		kp := KimoProcess{
-			ID:        rp.MysqlRow.ID,
-			MysqlUser: rp.MysqlRow.User,
-			DB:        rp.MysqlRow.DB.String,
-			Command:   rp.MysqlRow.Command,
-			Time:      uint32(ut),
-			State:     rp.MysqlRow.State.String,
-			Info:      rp.MysqlRow.Info.String,
-		}
-		if rp.AgentProcess != nil {
-			kp.CmdLine = rp.AgentProcess.CmdLine
-			kp.Pid = rp.AgentProcess.Pid
-			kp.Host = rp.AgentProcess.Hostname
-		} else {
-			if rp.Details != nil {
-				kp.Detail = rp.Detail()
-			}
-		}
-
-		kps = append(kps, kp)
-
-	}
-	return kps
-}
-
 // FetchAll is used to create processes from mysql to agents
-func (f *Fetcher) FetchAll(ctx context.Context) ([]KimoProcess, error) {
+func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	log.Debugf("Fetching...")
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -197,8 +164,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]KimoProcess, error) {
 	rps := f.combineMysqlAndProxyResults(rows, tps)
 
 	f.GetAgentProcesses(ctx, rps)
-	ps := f.createKimoProcesses(rps)
 
-	log.Debugf("%d processes are generated \n", len(ps))
-	return ps, nil
+	log.Debugf("%d raw processes are generated \n", len(rps))
+	return rps, nil
 }
