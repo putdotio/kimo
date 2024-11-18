@@ -79,5 +79,4 @@ func (s *Server) pollAgents() {
 			s.GetProcesses()
 		}
 	}
-
 }

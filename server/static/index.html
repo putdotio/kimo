@@ -36,10 +36,10 @@
                             { field: 'command', title: 'Command', headerFilter:'input' },
                             { field: 'time', title: 'Time', sorter: 'number', headerFilter:'input' },
                             { field: 'info', title: 'Info', sorter: 'string', headerFilter:'input' },
-                            { field: 'detail', title: 'Detail', sorter: 'string', headerFilter:'input' },
                             { field: 'host', title: 'Host', sorter: 'string', headerFilter:'input' },
                             { field: 'pid', title: 'Pid', sorter: 'string', headerFilter:'input' },
                             { field: 'cmdline', title: 'CMD', mutator: cmdline => cmdline?.join(' '), headerFilter:'input'},
+                            { field: 'detail', title: 'Detail', sorter: 'string', headerFilter:'input' },
                         ]
                     });
                 })

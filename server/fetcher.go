@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"kimo/config"
 	"kimo/types"
 	"strconv"
@@ -24,31 +25,41 @@ type RawProcess struct {
 	TCPProxyConn *TCPProxyConn
 	AgentProcess *types.AgentProcess
 
-	Detail Detail
+	Detail *Detail
 }
 
-type Detail int
+type Detail struct {
+	Hostname string
+	Status   Status
+}
+
+func (d *Detail) String() string {
+	if d.Hostname != "" {
+		return fmt.Sprintf("%s. Host: %s", d.Status.String(), d.Hostname)
+	} else {
+		return fmt.Sprintf("%s.", d.Status.String())
+	}
+}
+
+type Status int
 
 const (
-	DetailAgentFound Detail = iota
-	DetailAgentNotFound
-	DetailAgentCantConnect
-	DetailAgentError
-	DetailProxyNotFound
+	StatusAgentNotFound Status = iota
+	StatusAgentCantConnect
+	StatusAgentError
+	StatusProxyNotFound
 )
 
-func (d Detail) String() string {
-	switch d {
-	case DetailAgentFound:
-		return "Found on agent"
-	case DetailAgentError:
-		return "Agent errored"
-	case DetailAgentNotFound:
-		return "Not found on agent"
-	case DetailAgentCantConnect:
+func (s Status) String() string {
+	switch s {
+	case StatusAgentError:
+		return "Agent returned error"
+	case StatusAgentNotFound:
+		return "Process not found on agent"
+	case StatusAgentCantConnect:
 		return "Cant connect to agent"
-	case DetailProxyNotFound:
-		return "Not found on proxy"
+	case StatusProxyNotFound:
+		return "Connection not found on proxy"
 	default:
 		return "UNKNOWN"
 	}
@@ -84,6 +95,13 @@ func (f *Fetcher) GetAgentProcesses(ctx context.Context, rps []*RawProcess) {
 	for _, rp := range rps {
 		rps = append(rps, rp)
 
+		// there is no connection on tcpproxy for this raw process.
+		if rp.Detail != nil {
+			if rp.Detail.Status == StatusProxyNotFound {
+				continue
+			}
+		}
+
 		wg.Add(1)
 		go f.getAgentProcess(ctx, &wg, rp)
 	}
@@ -98,21 +116,14 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 	ap, err := ac.Get(ctx, rp.Addr().Port)
 	if err != nil {
 		if notFoundErr, ok := err.(*NotFoundError); ok {
-			rp.Detail = DetailAgentNotFound
-			rp.AgentProcess = &types.AgentProcess{
-				Hostname: notFoundErr.Host,
-			}
+			rp.Detail = &Detail{Status: StatusAgentNotFound, Hostname: notFoundErr.Host}
 		} else if cantConnectErr, ok := err.(*CantConnectError); ok {
-			rp.Detail = DetailAgentCantConnect
-			rp.AgentProcess = &types.AgentProcess{
-				Hostname: cantConnectErr.Host,
-			}
+			rp.Detail = &Detail{Status: StatusAgentCantConnect, Hostname: cantConnectErr.Host}
 		} else {
-			rp.Detail = DetailAgentError
+			rp.Detail = &Detail{Status: StatusAgentError}
 		}
 	} else {
 		rp.AgentProcess = ap
-		rp.Detail = DetailAgentFound
 	}
 }
 
@@ -123,7 +134,7 @@ func (f *Fetcher) createRawProcesses(rows []*MysqlRow, conns []*TCPProxyConn) []
 		rp := &RawProcess{MysqlRow: row}
 		conn := findTCPProxyConn(row.Address, conns)
 		if conn == nil {
-			rp.Detail = DetailProxyNotFound
+			rp.Detail = &Detail{Status: StatusProxyNotFound}
 		} else {
 			rp.TCPProxyConn = conn
 		}
@@ -148,19 +159,19 @@ func (f *Fetcher) createKimoProcesses(rps []*RawProcess) []KimoProcess {
 			Time:      uint32(ut),
 			State:     rp.MysqlRow.State.String,
 			Info:      rp.MysqlRow.Info.String,
-			Detail:    rp.Detail.String(),
 		}
 		if rp.AgentProcess != nil {
-			if rp.Detail == DetailAgentFound {
-				kp.CmdLine = rp.AgentProcess.CmdLine
-				kp.Pid = rp.AgentProcess.Pid
-				kp.Host = rp.AgentProcess.Hostname
-			}
-
-			if rp.Detail == DetailAgentNotFound {
-				kp.Host = rp.AgentProcess.Hostname
-			} else if rp.Detail == DetailAgentCantConnect {
-				kp.Host = rp.AgentProcess.Hostname
+			kp.CmdLine = rp.AgentProcess.CmdLine
+			kp.Pid = rp.AgentProcess.Pid
+			kp.Host = rp.AgentProcess.Hostname
+		} else {
+			if rp.Detail != nil {
+				if rp.Detail.Status == StatusAgentNotFound {
+					kp.Host = rp.Detail.Hostname
+				} else if rp.Detail.Status == StatusAgentCantConnect {
+					kp.Host = rp.Detail.Hostname
+				}
+				kp.Detail = rp.Detail.String()
 			}
 		}
 
