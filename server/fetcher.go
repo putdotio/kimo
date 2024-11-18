@@ -119,7 +119,7 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 	}
 }
 
-func (f *Fetcher) combineMysqlAndProxyResults(rows []*MysqlRow, conns []*TCPProxyConn) []*RawProcess {
+func combineMysqlAndProxyResults(rows []*MysqlRow, conns []*TCPProxyConn) []*RawProcess {
 	log.Infoln("Combining mysql and tcpproxy results...")
 	var rps []*RawProcess
 	for _, row := range rows {
@@ -161,7 +161,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	log.Infof("Got %d tcpproxy conns \n", len(tps))
 
 	// TODO: check tcpproxy config first and then do this
-	rps := f.combineMysqlAndProxyResults(rows, tps)
+	rps := combineMysqlAndProxyResults(rows, tps)
 
 	f.GetAgentProcesses(ctx, rps)
 
