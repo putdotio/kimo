@@ -24,8 +24,9 @@ type RawProcess struct {
 	MysqlRow     *MysqlRow
 	TCPProxyConn *TCPProxyConn
 	AgentProcess *types.AgentProcess
+	Detail       *Detail
 
-	Detail *Detail
+	AgentAddress types.IPPort
 }
 
 type Detail struct {
@@ -64,19 +65,6 @@ func (s Status) String() string {
 		return "UNKNOWN"
 	}
 }
-func (rp *RawProcess) Addr() types.IPPort {
-	var ip string
-	var port uint32
-	if rp.TCPProxyConn != nil {
-		ip = rp.TCPProxyConn.ClientOut.IP
-		port = rp.TCPProxyConn.ClientOut.Port
-	} else {
-		ip = rp.MysqlRow.Address.IP
-		port = rp.MysqlRow.Address.Port
-	}
-	return types.IPPort{IP: ip, Port: port}
-
-}
 
 // NewFetcher is constructor fuction for creating a new Fetcher object
 func NewFetcher(cfg config.Server) *Fetcher {
@@ -112,8 +100,8 @@ func (f *Fetcher) GetAgentProcesses(ctx context.Context, rps []*RawProcess) {
 func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *RawProcess) {
 	defer wg.Done()
 
-	ac := NewAgentClient(rp.Addr().IP, f.AgentPort)
-	ap, err := ac.Get(ctx, rp.Addr().Port)
+	ac := NewAgentClient(rp.AgentAddress.IP, f.AgentPort)
+	ap, err := ac.Get(ctx, rp.AgentAddress.Port)
 	if err != nil {
 		if notFoundErr, ok := err.(*NotFoundError); ok {
 			rp.Detail = &Detail{Status: StatusAgentNotFound, Hostname: notFoundErr.Host}
@@ -127,15 +115,17 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 	}
 }
 
-func (f *Fetcher) createRawProcesses(rows []*MysqlRow, conns []*TCPProxyConn) []*RawProcess {
-	log.Infoln("Creating raw processes...")
+func (f *Fetcher) combineMysqlAndProxyResults(rows []*MysqlRow, conns []*TCPProxyConn) []*RawProcess {
+	log.Infoln("Combining mysql and tcpproxy results...")
 	var rps []*RawProcess
 	for _, row := range rows {
 		rp := &RawProcess{MysqlRow: row}
 		conn := findTCPProxyConn(row.Address, conns)
 		if conn == nil {
+			rp.AgentAddress = types.IPPort{IP: row.Address.IP, Port: row.Address.Port}
 			rp.Detail = &Detail{Status: StatusProxyNotFound}
 		} else {
+			rp.AgentAddress = types.IPPort{IP: conn.ClientOut.IP, Port: conn.ClientOut.Port}
 			rp.TCPProxyConn = conn
 		}
 
@@ -195,7 +185,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]KimoProcess, error) {
 	}
 	log.Infof("Got %d mysql rows \n", len(rows))
 
-	// TODO: check tcpproxy config first and then call Get.
+	// TODO: check tcpproxy config first and then do this.
 	log.Infoln("Getting tcpproxy results...")
 	tps, err := f.TCPProxyClient.Get(ctx)
 	if err != nil {
@@ -203,7 +193,8 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]KimoProcess, error) {
 	}
 	log.Infof("Got %d tcpproxy conns \n", len(tps))
 
-	rps := f.createRawProcesses(rows, tps)
+	// TODO: check tcpproxy config first and then do this
+	rps := f.combineMysqlAndProxyResults(rows, tps)
 
 	f.GetAgentProcesses(ctx, rps)
 	ps := f.createKimoProcesses(rps)
