@@ -32,7 +32,6 @@ func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "access-control-allow-origin, access-control-allow-headers")
 
-	log.Infof("Returning response with %d kimo processes...\n", len(s.KimoProcesses))
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &Response{

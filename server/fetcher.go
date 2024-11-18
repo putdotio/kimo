@@ -81,7 +81,6 @@ func (s Status) String() string {
 func NewFetcher(cfg config.Server) *Fetcher {
 	f := new(Fetcher)
 	f.MysqlClient = NewMysqlClient(cfg)
-	log.Infof("MURAT %v ", cfg.TCPProxyMgmtAddress)
 	if cfg.TCPProxyMgmtAddress != "" {
 		f.TCPProxyClient = NewTCPProxyClient(cfg)
 	}
