@@ -49,9 +49,6 @@ func NewServer(cfg *config.Config) *Server {
 
 // GetProcesses gets all processes
 func (s *Server) GetProcesses() {
-	// todo: call with lock
-	// todo: prevent race condition
-	// todo: if a fetch is in progress and a new fetch is triggered, cancel the existing one.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -63,11 +60,8 @@ func (s *Server) GetProcesses() {
 	s.KimoProcesses = s.createKimoProcesses(rps)
 
 	log.Debugf("%d processes are set\n", len(s.KimoProcesses))
-}
 
-func (s *Server) setMetrics() {
-	// todo: prevent race condition
-	s.PrometheusMetric.SetMetrics()
+	s.PrometheusMetric.Set()
 }
 
 func (s *Server) pollAgents() {

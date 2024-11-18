@@ -63,7 +63,6 @@ func (s *Server) Static() http.Handler {
 
 // Metrics is used to expose metrics that is compatible with Prometheus exporter
 func (s *Server) Metrics() http.Handler {
-	// todo: separate prometheus and json metrics
 	return promhttp.Handler()
 }
 
@@ -73,7 +72,6 @@ func (s *Server) Run() error {
 	log.Infof("Running server on %s \n", s.Config.ListenAddress)
 
 	go s.pollAgents()
-	go s.setMetrics()
 
 	http.Handle("/", s.Static())
 	http.Handle("/metrics", s.Metrics())

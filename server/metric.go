@@ -2,7 +2,6 @@ package server
 
 import (
 	"strings"
-	"time"
 
 	"github.com/cenkalti/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -68,20 +67,6 @@ func NewPrometheusMetric(server *Server) *PrometheusMetric {
 				"cmdline",
 			},
 		),
-	}
-}
-
-// SetMetrics is used to set metrics periodically.
-func (pm *PrometheusMetric) SetMetrics() {
-	// todo: configurable time
-	ticker := time.NewTicker(2 * time.Second)
-
-	for {
-		select {
-		// todo: add return case
-		case <-ticker.C:
-			pm.Set()
-		}
 	}
 }
 
