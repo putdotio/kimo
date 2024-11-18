@@ -71,7 +71,7 @@ func (s *Server) setMetrics() {
 }
 
 func (s *Server) pollAgents() {
-	ticker := time.NewTicker(s.Config.PollDuration * time.Second)
+	ticker := time.NewTicker(s.Config.PollInterval * time.Second)
 
 	for {
 		s.GetProcesses() // poll immediately at initialization

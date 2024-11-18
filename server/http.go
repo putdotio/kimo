@@ -3,9 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/cenkalti/log"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -17,20 +15,6 @@ import (
 // Response is type for returning a response from kimo server
 type Response struct {
 	Processes []KimoProcess `json:"processes"`
-}
-
-// NewHTTPClient returns a http client with custom connect & read timeout
-func NewHTTPClient(connectTimeout, readTimeout time.Duration) *http.Client {
-	return &http.Client{
-		// Set total timeout slightly higher than sum of connect + read
-		Timeout: (connectTimeout + readTimeout) + 2*time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout: connectTimeout * time.Second,
-			}).DialContext,
-			IdleConnTimeout: 90 * time.Second,
-		},
-	}
 }
 
 // Procs is a handler for returning process list

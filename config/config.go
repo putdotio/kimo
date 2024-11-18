@@ -15,21 +15,17 @@ type Config struct {
 
 // Server is used as server config
 type Server struct {
-	DSN                    string        `toml:"dsn"`
-	AgentPort              uint32        `toml:"agent_port"`
-	PollDuration           time.Duration `toml:"poll_duration"`
-	TCPProxyMgmtAddress    string        `toml:"tcpproxy_mgmt_address"`
-	ListenAddress          string        `toml:"listen_address"`
-	AgentConnectTimeout    time.Duration `toml:"agent_connect_timeout"`
-	AgentReadTimeout       time.Duration `toml:"agent_read_timeout"`
-	TCPProxyConnectTimeout time.Duration `toml:"tcpproxy_connect_timeout"`
-	TCPProxyReadTimeout    time.Duration `toml:"tcpproxy_read_timeout"`
+	DSN                 string        `toml:"dsn"`
+	AgentPort           uint32        `toml:"agent_port"`
+	PollInterval        time.Duration `toml:"poll_interval"`
+	TCPProxyMgmtAddress string        `toml:"tcpproxy_mgmt_address"`
+	ListenAddress       string        `toml:"listen_address"`
 }
 
 // Agent is used as anget config on agent machines
 type Agent struct {
 	ListenAddress string        `toml:"listen_address"`
-	PollDuration  time.Duration `toml:"poll_duration"`
+	PollInterval  time.Duration `toml:"poll_interval"`
 }
 
 // NewConfig is constructor function for Config type
@@ -47,19 +43,15 @@ func (c *Config) ReadFile(name string) error {
 
 var defaultConfig = Config{
 	Server: Server{
-		DSN:                    "",
-		AgentPort:              3333,
-		PollDuration:           10,
-		TCPProxyMgmtAddress:    "tcpproxy:3307",
-		ListenAddress:          "0.0.0.0:3322",
-		AgentConnectTimeout:    2,
-		AgentReadTimeout:       3,
-		TCPProxyConnectTimeout: 1,
-		TCPProxyReadTimeout:    1,
+		DSN:                 "",
+		AgentPort:           3333,
+		PollInterval:        10,
+		TCPProxyMgmtAddress: "tcpproxy:3307",
+		ListenAddress:       "0.0.0.0:3322",
 	},
 	Agent: Agent{
 		ListenAddress: "0.0.0.0:3333",
-		PollDuration:  30,
+		PollInterval:  30,
 	},
 	Debug: true,
 }

@@ -133,7 +133,7 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 func (a *Agent) pollConns() {
 	// todo: run with context
 	log.Debugln("Polling...")
-	ticker := time.NewTicker(a.Config.PollDuration * time.Second)
+	ticker := time.NewTicker(a.Config.PollInterval * time.Second)
 
 	for {
 		a.getConns() // poll immediately at the initialization
