@@ -20,6 +20,9 @@
                         paginationSize: 50,
                         paginationSizeSelector: [50, 100, 250, 500],
                         footerElement: '<div>Filtered: <span id="filtered">..</span>/<span id="total">' + d.processes.length + '</span></div>',
+                        initialSort:[
+                            {column:"id", dir:"asc"},
+                        ],
                         dataFiltered: function(filters, rows){
                             var element = document.getElementById("filtered");
                             element.innerHTML = rows.length;
