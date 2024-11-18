@@ -43,11 +43,10 @@ func (c *Config) ReadFile(name string) error {
 
 var defaultConfig = Config{
 	Server: Server{
-		DSN:                 "",
-		AgentPort:           3333,
-		PollInterval:        10,
-		TCPProxyMgmtAddress: "tcpproxy:3307",
-		ListenAddress:       "0.0.0.0:3322",
+		DSN:           "",
+		AgentPort:     3333,
+		PollInterval:  10,
+		ListenAddress: "0.0.0.0:3322",
 	},
 	Agent: Agent{
 		ListenAddress: "0.0.0.0:3333",
