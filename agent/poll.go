@@ -30,7 +30,7 @@ func (a *Agent) pollConns(ctx context.Context) {
 	}
 }
 func (a *Agent) doPoll(ctx context.Context) error {
-	conns, err := a.getConns(ctx)
+	conns, err := getConns(ctx)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (a *Agent) doPoll(ctx context.Context) error {
 	log.Infof("Updated connections: count=%d", len(conns))
 	return nil
 }
-func (a *Agent) getConns(ctx context.Context) ([]gopsutilNet.ConnectionStat, error) {
+func getConns(ctx context.Context) ([]gopsutilNet.ConnectionStat, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
