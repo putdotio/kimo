@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"kimo/config"
 	"kimo/types"
@@ -131,7 +132,10 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 
 // Run is main function to run http server
 func (a *Agent) Run() error {
-	go a.pollConns()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go a.pollConns(ctx)
 
 	http.HandleFunc("/proc", a.Process)
 	err := http.ListenAndServe(a.Config.ListenAddress, nil)
