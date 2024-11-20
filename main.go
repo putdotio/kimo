@@ -57,7 +57,7 @@ func main() {
 			Name:  "agent",
 			Usage: "run agent",
 			Action: func(c *cli.Context) error {
-				a := agent.NewAgent(cfg)
+				a := agent.NewAgent(&cfg.Agent)
 				err := a.Run()
 				if err != nil {
 					return err
@@ -69,7 +69,7 @@ func main() {
 			Name:  "server",
 			Usage: "run server",
 			Action: func(c *cli.Context) error {
-				s := server.NewServer(cfg)
+				s := server.NewServer(&cfg.Server)
 				s.Config = &cfg.Server
 				err := s.Run()
 				if err != nil {

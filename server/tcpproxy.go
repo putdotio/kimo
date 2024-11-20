@@ -32,9 +32,9 @@ type TCPProxyClient struct {
 }
 
 // NewTCPProxy is used to create a new TCPProxy
-func NewTCPProxyClient(cfg config.ServerConfig) *TCPProxyClient {
+func NewTCPProxyClient(cfg config.TCPProxy) *TCPProxyClient {
 	tc := new(TCPProxyClient)
-	tc.MgmtAddress = cfg.TCPProxy.MgmtAddress
+	tc.MgmtAddress = cfg.MgmtAddress
 	return tc
 }
 

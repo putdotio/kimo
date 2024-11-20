@@ -22,9 +22,9 @@ type Agent struct {
 }
 
 // NewAgent is constuctor function for Agent type
-func NewAgent(cfg *config.Config) *Agent {
+func NewAgent(cfg *config.AgentConfig) *Agent {
 	d := new(Agent)
-	d.Config = &cfg.Agent
+	d.Config = cfg
 	d.Hostname = getHostname()
 	return d
 }

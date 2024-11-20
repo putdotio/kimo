@@ -25,9 +25,9 @@ type MysqlRow struct {
 }
 
 // NewMysqlClient is used to create a Mysql type.
-func NewMysqlClient(cfg config.ServerConfig) *MysqlClient {
+func NewMysqlClient(cfg config.MySQLConfig) *MysqlClient {
 	m := new(MysqlClient)
-	m.DSN = cfg.MySQL.DSN
+	m.DSN = cfg.DSN
 	return m
 }
 

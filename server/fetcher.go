@@ -81,9 +81,9 @@ func (s Status) String() string {
 // NewFetcher is constructor fuction for creating a new Fetcher object
 func NewFetcher(cfg config.ServerConfig) *Fetcher {
 	f := new(Fetcher)
-	f.MysqlClient = NewMysqlClient(cfg)
+	f.MysqlClient = NewMysqlClient(cfg.MySQL)
 	if cfg.TCPProxy.MgmtAddress != "" {
-		f.TCPProxyClient = NewTCPProxyClient(cfg)
+		f.TCPProxyClient = NewTCPProxyClient(cfg.TCPProxy)
 	}
 	f.AgentPort = cfg.Agent.Port
 	return f

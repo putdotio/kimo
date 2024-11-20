@@ -32,14 +32,14 @@ type Server struct {
 }
 
 // NewServer is used to create a new Server object
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.ServerConfig) *Server {
 	log.Infoln("Creating a new server...")
 	s := new(Server)
-	s.Config = &cfg.Server
-	s.PrometheusMetric = NewPrometheusMetric(cfg.Server.Metric.CmdlinePatterns)
+	s.Config = cfg
+	s.PrometheusMetric = NewPrometheusMetric(cfg.Metric.CmdlinePatterns)
 	s.KimoProcesses = make([]KimoProcess, 0)
 	s.Fetcher = NewFetcher(*s.Config)
 
-	s.AgentPort = cfg.Server.Agent.Port
+	s.AgentPort = cfg.Agent.Port
 	return s
 }
