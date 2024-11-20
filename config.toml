@@ -2,11 +2,11 @@ debug = true
 
 [agent]
 listen_address = "0.0.0.0:3333"
-poll_interval = 30
+poll_interval = 5
 
 [server]
 dsn = "kimo:123@(mysql:3306)/information_schema"
 listen_address = "0.0.0.0:3322"
-poll_interval = 10
+poll_interval = 6
 agent_port = 3333
 tcpproxy_mgmt_address = "tcpproxy:3307"

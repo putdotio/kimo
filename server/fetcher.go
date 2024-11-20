@@ -6,6 +6,7 @@ import (
 	"kimo/config"
 	"kimo/types"
 	"sync"
+	"time"
 
 	"github.com/cenkalti/log"
 )
@@ -88,20 +89,6 @@ func NewFetcher(cfg config.Server) *Fetcher {
 	return f
 }
 
-// GetAgentProcesseses gets processes from kimo agents
-func (f *Fetcher) GetAgentProcesses(ctx context.Context, rps []*RawProcess) {
-	log.Infof("Getting processes from %d agents...\n", len(rps))
-	var wg sync.WaitGroup
-	for _, rp := range rps {
-		rps = append(rps, rp)
-
-		wg.Add(1)
-		go f.getAgentProcess(ctx, &wg, rp)
-	}
-	wg.Wait()
-	log.Infoln("All agents are visited.")
-}
-
 func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *RawProcess) {
 	defer wg.Done()
 
@@ -145,13 +132,10 @@ func createRawProcesses(rows []*MysqlRow) []*RawProcess {
 
 // FetchAll is used to create processes from mysql to agents
 func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
-	log.Debugf("Fetching...")
+	log.Infoln("Fetching resources...")
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	log.Infoln("Getting mysql results...")
-	rows, err := f.MysqlClient.Get(ctx)
+	log.Infoln("Fetching mysql rows...")
+	rows, err := f.fetchMysql(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +144,8 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	rps := createRawProcesses(rows)
 
 	if f.TCPProxyClient != nil {
-		log.Infoln("Getting tcpproxy conns...")
-		tps, err := f.TCPProxyClient.Get(ctx)
+		log.Infoln("Fetching tcpproxy conns...")
+		tps, err := f.fetchTcpProxy(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -169,8 +153,91 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 		addProxyConns(rps, tps)
 	}
 
-	f.GetAgentProcesses(ctx, rps)
+	log.Infof("Fetching %d agents...\n", len(rps))
+	f.fetchAgents(ctx, rps)
 
 	log.Debugf("%d raw processes are generated \n", len(rps))
 	return rps, nil
+}
+
+func (f *Fetcher) fetchMysql(ctx context.Context) ([]*MysqlRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*3)
+	defer cancel()
+
+	type result struct {
+		rows []*MysqlRow
+		err  error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		rows, err := f.MysqlClient.Get(ctx)
+		select {
+		case resultChan <- result{rows, err}:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("operation timed out: %w", ctx.Err())
+	case r := <-resultChan:
+		return r.rows, r.err
+	}
+}
+
+func (f *Fetcher) fetchTcpProxy(ctx context.Context) ([]*TCPProxyConn, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*3)
+	defer cancel()
+
+	type result struct {
+		conns []*TCPProxyConn
+		err   error
+	}
+
+	resultChan := make(chan result)
+	go func() {
+		conns, err := f.TCPProxyClient.Get(ctx)
+		select {
+		case resultChan <- result{conns, err}:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("operation timed out: %w", ctx.Err())
+	case r := <-resultChan:
+		return r.conns, r.err
+	}
+}
+
+func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		// todo: limit concurrent goroutines.
+		var wg sync.WaitGroup
+		for _, rp := range rps {
+			wg.Add(1)
+			go f.getAgentProcess(ctx, &wg, rp)
+		}
+		wg.Wait()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Errorf("fetchAgents: operation timed out: %s", ctx.Err())
+		return
+	case <-done:
+		log.Infoln("All agents are visited.")
+		return
+	}
 }

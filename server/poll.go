@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func (s *Server) pollAgents(ctx context.Context) {
-	log.Infoln("Polling...")
+	log.Infoln("Polling started...")
 	ticker := time.NewTicker(s.Config.PollInterval * time.Second)
 
 	// Initial poll
@@ -30,17 +31,39 @@ func (s *Server) pollAgents(ctx context.Context) {
 }
 
 func (s *Server) doPoll(ctx context.Context) error {
-	rps, err := s.Fetcher.FetchAll(ctx)
-	if err != nil {
-		log.Error(err.Error())
-		return err
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+
+	type result struct {
+		rps []*RawProcess
+		err error
 	}
-	s.KimoProcesses = s.createKimoProcesses(rps)
 
-	log.Debugf("%d processes are set\n", len(s.KimoProcesses))
+	resultChan := make(chan result)
 
-	s.PrometheusMetric.Set()
-	return nil
+	go func() {
+		rps, err := s.Fetcher.FetchAll(ctx)
+		select {
+		case resultChan <- result{rps, err}:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("operation timed out while fetching all: %w", ctx.Err())
+	case r := <-resultChan:
+		if r.err != nil {
+			return r.err
+		}
+		s.KimoProcesses = s.createKimoProcesses(r.rps)
+		s.PrometheusMetric.Set()
+		log.Debugf("%d processes are set\n", len(s.KimoProcesses))
+		return nil
+	}
+
 }
 
 func (s *Server) createKimoProcesses(rps []*RawProcess) []KimoProcess {

@@ -10,7 +10,7 @@ import (
 )
 
 func (a *Agent) pollConns(ctx context.Context) {
-	log.Infoln("Polling...")
+	log.Infoln("Polling started...")
 	ticker := time.NewTicker(a.Config.PollInterval * time.Second)
 
 	// Initial poll
@@ -40,6 +40,7 @@ func (a *Agent) doPoll(ctx context.Context) error {
 	log.Infof("Updated connections: count=%d", len(conns))
 	return nil
 }
+
 func getConns(ctx context.Context) ([]gopsutilNet.ConnectionStat, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
