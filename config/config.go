@@ -15,11 +15,12 @@ type Config struct {
 
 // Server is used as server config
 type Server struct {
-	DSN                 string        `toml:"dsn"`
-	AgentPort           uint32        `toml:"agent_port"`
-	PollInterval        time.Duration `toml:"poll_interval"`
-	TCPProxyMgmtAddress string        `toml:"tcpproxy_mgmt_address"`
-	ListenAddress       string        `toml:"listen_address"`
+	DSN                       string        `toml:"dsn"`
+	AgentPort                 uint32        `toml:"agent_port"`
+	PollInterval              time.Duration `toml:"poll_interval"`
+	TCPProxyMgmtAddress       string        `toml:"tcpproxy_mgmt_address"`
+	ListenAddress             string        `toml:"listen_address"`
+	MetricCommandlinePatterns []string      `toml:"metric_cmdline_patterns"`
 }
 
 // Agent is used as anget config on agent machines

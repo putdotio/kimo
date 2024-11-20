@@ -59,7 +59,7 @@ func (s *Server) doPoll(ctx context.Context) error {
 			return r.err
 		}
 		s.KimoProcesses = s.createKimoProcesses(r.rps)
-		s.PrometheusMetric.Set()
+		s.PrometheusMetric.Set(s.KimoProcesses)
 		log.Debugf("%d processes are set\n", len(s.KimoProcesses))
 		return nil
 	}
