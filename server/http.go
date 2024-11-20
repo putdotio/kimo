@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -56,10 +57,12 @@ func (s *Server) Metrics() http.Handler {
 
 // Run is used to run http handlers
 func (s *Server) Run() error {
-	// todo: reconsider context usages
 	log.Infof("Running server on %s \n", s.Config.ListenAddress)
 
-	go s.pollAgents()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go s.pollAgents(ctx)
 
 	http.Handle("/", s.Static())
 	http.Handle("/metrics", s.Metrics())

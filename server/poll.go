@@ -8,33 +8,39 @@ import (
 	"github.com/cenkalti/log"
 )
 
-func (s *Server) doPoll() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (s *Server) pollAgents(ctx context.Context) {
+	log.Infoln("Polling...")
+	ticker := time.NewTicker(s.Config.PollInterval * time.Second)
 
+	// Initial poll
+	if err := s.doPoll(ctx); err != nil {
+		log.Errorf("Initial poll failed: %v", err)
+	}
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := s.doPoll(ctx); err != nil {
+				log.Errorf("Poll failed: %v", err)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *Server) doPoll(ctx context.Context) error {
 	rps, err := s.Fetcher.FetchAll(ctx)
 	if err != nil {
 		log.Error(err.Error())
-		return
+		return err
 	}
 	s.KimoProcesses = s.createKimoProcesses(rps)
 
 	log.Debugf("%d processes are set\n", len(s.KimoProcesses))
 
 	s.PrometheusMetric.Set()
-}
-
-func (s *Server) pollAgents() {
-	ticker := time.NewTicker(s.Config.PollInterval * time.Second)
-
-	for {
-		s.doPoll() // poll immediately at initialization
-		select {
-		// todo: add return case
-		case <-ticker.C:
-			s.doPoll()
-		}
-	}
+	return nil
 }
 
 func (s *Server) createKimoProcesses(rps []*RawProcess) []KimoProcess {
