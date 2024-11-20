@@ -23,7 +23,7 @@ type KimoProcess struct {
 
 // Server is a type for handling server side operations
 type Server struct {
-	Config           *config.Server
+	Config           *config.ServerConfig
 	PrometheusMetric *PrometheusMetric
 	KimoProcesses    []KimoProcess
 	Fetcher          *Fetcher
@@ -36,10 +36,10 @@ func NewServer(cfg *config.Config) *Server {
 	log.Infoln("Creating a new server...")
 	s := new(Server)
 	s.Config = &cfg.Server
-	s.PrometheusMetric = NewPrometheusMetric(cfg.Server.MetricCommandlinePatterns)
+	s.PrometheusMetric = NewPrometheusMetric(cfg.Server.Metric.CmdlinePatterns)
 	s.KimoProcesses = make([]KimoProcess, 0)
 	s.Fetcher = NewFetcher(*s.Config)
 
-	s.AgentPort = cfg.Server.AgentPort
+	s.AgentPort = cfg.Server.Agent.Port
 	return s
 }

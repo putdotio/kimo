@@ -20,7 +20,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "config, c",
-			Value: "/etc/kimo.toml",
+			Value: "/etc/kimo.yaml",
 			Usage: "configuration file path",
 		},
 		cli.BoolFlag{
@@ -33,7 +33,7 @@ func main() {
 		},
 	}
 	app.Before = func(c *cli.Context) error {
-		err := cfg.ReadFile(c.GlobalString("config"))
+		err := cfg.LoadConfig(c.GlobalString("config"))
 		if err != nil {
 			log.Errorf("Cannot read config: %s\n", err)
 		}

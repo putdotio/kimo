@@ -16,7 +16,7 @@ import (
 
 // Agent is type for handling agent operations
 type Agent struct {
-	Config   *config.Agent
+	Config   *config.AgentConfig
 	Conns    []gopsutilNet.ConnectionStat
 	Hostname string
 }

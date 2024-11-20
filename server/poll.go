@@ -11,7 +11,7 @@ import (
 
 func (s *Server) pollAgents(ctx context.Context) {
 	log.Infoln("Polling started...")
-	ticker := time.NewTicker(s.Config.PollInterval * time.Second)
+	ticker := time.NewTicker(s.Config.PollInterval)
 
 	// Initial poll
 	if err := s.doPoll(ctx); err != nil {

@@ -30,4 +30,4 @@ COPY . .
 RUN go build -o /go/bin/kimo
 
 # Add config file
-COPY config.toml /etc/kimo.toml
+COPY config.yaml /etc/kimo.yaml

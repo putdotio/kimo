@@ -1,32 +1,54 @@
 package config
 
 import (
+	"fmt"
+	"os"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	"gopkg.in/yaml.v3"
 )
 
-// Config is used as config that contains both of agent and server configs
+// Config represents the root configuration structure
 type Config struct {
-	Debug  bool `toml:"debug"`
-	Agent  Agent
-	Server Server
+	Debug  bool         `yaml:"debug"`
+	Agent  AgentConfig  `yaml:"agent"`
+	Server ServerConfig `yaml:"server"`
 }
 
-// Server is used as server config
-type Server struct {
-	DSN                       string        `toml:"dsn"`
-	AgentPort                 uint32        `toml:"agent_port"`
-	PollInterval              time.Duration `toml:"poll_interval"`
-	TCPProxyMgmtAddress       string        `toml:"tcpproxy_mgmt_address"`
-	ListenAddress             string        `toml:"listen_address"`
-	MetricCommandlinePatterns []string      `toml:"metric_cmdline_patterns"`
+// AgentConfig represents the agent section configuration
+type AgentConfig struct {
+	ListenAddress string        `yaml:"listen_address"`
+	PollInterval  time.Duration `yaml:"poll_interval"`
 }
 
-// Agent is used as anget config on agent machines
-type Agent struct {
-	ListenAddress string        `toml:"listen_address"`
-	PollInterval  time.Duration `toml:"poll_interval"`
+// ServerConfig represents the server section configuration
+type ServerConfig struct {
+	ListenAddress string        `yaml:"listen_address"`
+	PollInterval  time.Duration `yaml:"poll_interval"`
+	MySQL         MySQLConfig   `yaml:"mysql"`
+	Agent         AgentInfo     `yaml:"agent"`
+	TCPProxy      TCPProxy      `yaml:"tcpproxy"`
+	Metric        Metric        `yaml:"metric"`
+}
+
+// MySQLConfig holds MySQL specific configuration
+type MySQLConfig struct {
+	DSN string `yaml:"dsn"`
+}
+
+// AgentInfo holds agent-related configuration within server section
+type AgentInfo struct {
+	Port uint32 `yaml:"port"`
+}
+
+// TCPProxy holds TCP proxy configuration
+type TCPProxy struct {
+	MgmtAddress string `yaml:"mgmt_address"`
+}
+
+// Metric holds metric-related configuration
+type Metric struct {
+	CmdlinePatterns []string `yaml:"cmdline_patterns"`
 }
 
 // NewConfig is constructor function for Config type
@@ -36,22 +58,33 @@ func NewConfig() *Config {
 	return c
 }
 
-// ReadFile parses a TOML file and returns new Config.
-func (c *Config) ReadFile(name string) error {
-	_, err := toml.DecodeFile(name, c)
-	return err
+// ReadFile parses a yaml config file and loads it into Config object
+func (c *Config) LoadConfig(name string) error {
+	content, err := os.ReadFile(name)
+	if err != nil {
+		return err
+	}
+	err = yaml.Unmarshal(content, c)
+	if err != nil {
+		return fmt.Errorf("parsing YAML file %s: %w", name, err)
+	}
+	return nil
 }
 
 var defaultConfig = Config{
-	Server: Server{
-		DSN:           "",
-		AgentPort:     3333,
-		PollInterval:  10,
-		ListenAddress: "0.0.0.0:3322",
-	},
-	Agent: Agent{
-		ListenAddress: "0.0.0.0:3333",
-		PollInterval:  30,
-	},
 	Debug: true,
+	Agent: AgentConfig{
+		ListenAddress: "0.0.0.0:3333",
+		PollInterval:  10 * time.Second,
+	},
+	Server: ServerConfig{
+		ListenAddress: "0.0.0.0:3322",
+		PollInterval:  12 * time.Second,
+		MySQL: MySQLConfig{
+			DSN: "",
+		},
+		Agent: AgentInfo{
+			Port: 3333,
+		},
+	},
 }
