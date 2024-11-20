@@ -19,19 +19,8 @@ type Response struct {
 
 // Procs is a handler for returning process list
 func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
-	forceParam := req.URL.Query().Get("force")
-	fetch := false
-	if forceParam == "true" || len(s.KimoProcesses) == 0 {
-		fetch = true
-	}
-
-	if fetch {
-		s.GetProcesses()
-	}
-
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "access-control-allow-origin, access-control-allow-headers")
-
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &Response{
