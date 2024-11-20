@@ -98,7 +98,6 @@ func (a *Agent) createAgentProcess(proc *hostProc) *types.AgentProcess {
 		log.Debugf("Cmdline could not found for %d\n", proc.process.Pid)
 	}
 	return &types.AgentProcess{
-		Laddr:    types.IPPort{IP: proc.conn.Laddr.IP, Port: proc.conn.Laddr.Port},
 		Status:   proc.conn.Status,
 		Pid:      proc.conn.Pid,
 		Name:     name,
