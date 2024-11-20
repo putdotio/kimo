@@ -8,17 +8,17 @@ import (
 
 // KimoProcess is the final process that is combined with AgentProcess + TCPProxyConn + MysqlProcess
 type KimoProcess struct {
-	ID        int32    `json:"id"`
-	MysqlUser string   `json:"mysql_user"`
-	DB        string   `json:"db"`
-	Command   string   `json:"command"`
-	Time      uint32   `json:"time"`
-	State     string   `json:"state"`
-	Info      string   `json:"info"`
-	CmdLine   []string `json:"cmdline"`
-	Pid       int32    `json:"pid,omitempty"`
-	Host      string   `json:"host"`
-	Detail    string   `json:"detail"`
+	ID        int32  `json:"id"`
+	MysqlUser string `json:"mysql_user"`
+	DB        string `json:"db"`
+	Command   string `json:"command"`
+	Time      uint32 `json:"time"`
+	State     string `json:"state"`
+	Info      string `json:"info"`
+	CmdLine   string `json:"cmdline"`
+	Pid       int32  `json:"pid,omitempty"`
+	Host      string `json:"host"`
+	Detail    string `json:"detail"`
 }
 
 // Server is a type for handling server side operations

@@ -8,10 +8,10 @@ type IPPort struct {
 
 // AgentProcess is the process type in terms of Agent context
 type AgentProcess struct {
-	Laddr    IPPort   `json:"localaddr"`
-	Status   string   `json:"status"`
-	Pid      int32    `json:"pid"`
-	Name     string   `json:"name"`
-	Hostname string   `json:"hostname"`
-	CmdLine  []string `json:"cmdline"`
+	Laddr    IPPort `json:"localaddr"`
+	Status   string `json:"status"`
+	Pid      int32  `json:"pid"`
+	Name     string `json:"name"`
+	Hostname string `json:"hostname"`
+	CmdLine  string `json:"cmdline"`
 }

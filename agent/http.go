@@ -93,7 +93,7 @@ func (a *Agent) createAgentProcess(proc *hostProc) *types.AgentProcess {
 	if err != nil {
 		name = ""
 	}
-	cl, err := proc.process.CmdlineSlice()
+	cmdline, err := proc.process.Cmdline()
 	if err != nil {
 		log.Debugf("Cmdline could not found for %d\n", proc.process.Pid)
 	}
@@ -102,7 +102,7 @@ func (a *Agent) createAgentProcess(proc *hostProc) *types.AgentProcess {
 		Status:   proc.conn.Status,
 		Pid:      proc.conn.Pid,
 		Name:     name,
-		CmdLine:  cl,
+		CmdLine:  cmdline,
 		Hostname: a.Hostname,
 	}
 }

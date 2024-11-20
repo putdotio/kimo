@@ -2,7 +2,6 @@ package server
 
 import (
 	"regexp"
-	"strings"
 
 	"github.com/cenkalti/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -71,10 +70,7 @@ func (pm *PrometheusMetric) Set(kps []KimoProcess) {
 }
 
 // formatCommand formats the command string based on configuration
-func (pm *PrometheusMetric) formatCommand(cmdLine []string) string {
-	cmdline := strings.Join(cmdLine, " ")
-	log.Infof("Formatting command: %s \n", cmdline)
-
+func (pm *PrometheusMetric) formatCommand(cmdline string) string {
 	for _, cmdRegexp := range pm.commandLineRegexps {
 		result := cmdRegexp.FindString(cmdline)
 		if result != "" {
