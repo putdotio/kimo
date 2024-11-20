@@ -169,20 +169,15 @@ func (f *Fetcher) fetchMysql(ctx context.Context) ([]*MysqlRow, error) {
 		err  error
 	}
 
-	resultChan := make(chan result)
+	resultChan := make(chan result, 1)
 	go func() {
 		rows, err := f.MysqlClient.Get(ctx)
-		select {
-		case resultChan <- result{rows, err}:
-			return
-		case <-ctx.Done():
-			return
-		}
+		resultChan <- result{rows, err}
 	}()
 
 	select {
 	case <-ctx.Done():
-		return nil, fmt.Errorf("operation timed out: %w", ctx.Err())
+		return nil, fmt.Errorf("fetch mysql operation timed out: %w", ctx.Err())
 	case r := <-resultChan:
 		return r.rows, r.err
 	}
@@ -197,20 +192,15 @@ func (f *Fetcher) fetchTcpProxy(ctx context.Context) ([]*TCPProxyConn, error) {
 		err   error
 	}
 
-	resultChan := make(chan result)
+	resultChan := make(chan result, 1)
 	go func() {
 		conns, err := f.TCPProxyClient.Get(ctx)
-		select {
-		case resultChan <- result{conns, err}:
-			return
-		case <-ctx.Done():
-			return
-		}
+		resultChan <- result{conns, err}
 	}()
 
 	select {
 	case <-ctx.Done():
-		return nil, fmt.Errorf("operation timed out: %w", ctx.Err())
+		return nil, fmt.Errorf("fetch tcpproxy operation timed out: %w", ctx.Err())
 	case r := <-resultChan:
 		return r.conns, r.err
 	}
@@ -220,7 +210,7 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 	go func() {
 		// todo: limit concurrent goroutines.
 		var wg sync.WaitGroup
@@ -234,7 +224,7 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) {
 
 	select {
 	case <-ctx.Done():
-		log.Errorf("fetchAgents: operation timed out: %s", ctx.Err())
+		log.Errorf("fetch agents operation timed out: %s", ctx.Err())
 		return
 	case <-done:
 		log.Infoln("All agents are visited.")

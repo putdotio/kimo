@@ -50,17 +50,13 @@ func getConns(ctx context.Context) ([]gopsutilNet.ConnectionStat, error) {
 		err   error
 	}
 
-	resultChan := make(chan result)
+	resultChan := make(chan result, 1)
 	go func() {
 		// This is an expensive operation.
 		// So, we need to call it infrequent to prevent high load on servers those run kimo agents.
 		conns, err := gopsutilNet.ConnectionsWithContext(ctx, "all") //todo: all -> tcp
-		select {
-		case resultChan <- result{conns, err}:
-			return
-		case <-ctx.Done():
-			return
-		}
+		resultChan <- result{conns, err}
+
 	}()
 
 	select {
