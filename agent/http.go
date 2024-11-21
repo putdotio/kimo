@@ -61,12 +61,12 @@ func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	return uint32(p), nil
 }
 
-type hostProc struct {
+type NetworkProcess struct {
 	process *gopsutilProcess.Process
 	conn    gopsutilNet.ConnectionStat
 }
 
-func (a *Agent) findProc(port uint32) *hostProc {
+func (a *Agent) findProcess(port uint32) *NetworkProcess {
 	for _, conn := range a.Conns {
 		if conn.Laddr.Port != port {
 			continue
@@ -83,7 +83,7 @@ func (a *Agent) findProc(port uint32) *hostProc {
 			return nil
 		}
 
-		return &hostProc{
+		return &NetworkProcess{
 			process: process,
 			conn:    conn,
 		}
@@ -91,21 +91,21 @@ func (a *Agent) findProc(port uint32) *hostProc {
 	return nil
 }
 
-func createResponse(proc *hostProc) *Response {
-	if proc == nil {
+func createResponse(np *NetworkProcess) *Response {
+	if np == nil {
 		return nil
 	}
-	name, err := proc.process.Name()
+	name, err := np.process.Name()
 	if err != nil {
 		name = ""
 	}
-	cmdline, err := proc.process.Cmdline()
+	cmdline, err := np.process.Cmdline()
 	if err != nil {
-		log.Debugf("Cmdline could not found for %d\n", proc.process.Pid)
+		log.Debugf("Cmdline could not found for %d\n", np.process.Pid)
 	}
 	return &Response{
-		Status:  proc.conn.Status,
-		Pid:     proc.conn.Pid,
+		Status:  np.conn.Status,
+		Pid:     np.conn.Pid,
 		Name:    name,
 		CmdLine: cmdline,
 	}
@@ -121,7 +121,7 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "port param is required", http.StatusBadRequest)
 		return
 	}
-	p := a.findProc(port)
+	p := a.findProcess(port)
 	if p == nil {
 		http.Error(w, "Connection not found", http.StatusNotFound)
 		return
