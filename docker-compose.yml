@@ -2,7 +2,7 @@ version: '3.9'
 services:
   mysql:
     image: kimo/mysql
-    container_name: mysql
+    container_name: kimo-mysql
     build:
       dockerfile: Dockerfile-mysql
       context: .
@@ -10,7 +10,7 @@ services:
       - "3306:3306"
   tcpproxy:
     image: cenkalti/tcpproxy
-    container_name: tcpproxy
+    container_name: kimo-tcpproxy
     depends_on:
       - mysql
     ports:

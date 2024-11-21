@@ -33,7 +33,7 @@
                         },
                         columns:[
                             {
-                                title: "MySQL Info",
+                                title: "MySQL",
                                 headerHozAlign: "center",
                                 columns:[
                                     { field: 'id', title: 'ID' , sorter: 'number', headerFilter: 'input', headerSortStartingDir: 'asc' },
@@ -46,13 +46,19 @@
                                 ]
                             },
                             {
-                                title: "Kimo Agent Info",
+                                title: "Kimo Agent",
                                 headerHozAlign: "center",
                                 columns:[
                                     { field: 'host', title: 'Host', sorter: 'string', headerFilter:'input' },
                                     { field: 'pid', title: 'Pid', sorter: 'string', headerFilter:'input' },
                                     { field: 'cmdline', title: 'CMD', sorter: 'string', headerFilter:'input'},
                                     { field: 'status', title: 'Connection Status', sorter: 'string', headerFilter:'input'},
+                                ]
+                            },
+                            {
+                                title: "Info",
+                                headerHozAlign: "center",
+                                columns:[
                                     { field: 'detail', title: 'Detail', sorter: 'string', headerFilter:'input' }
                                 ]
                             }

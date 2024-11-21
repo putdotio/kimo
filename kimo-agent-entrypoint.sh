@@ -1,6 +1,6 @@
 #!/bin/bash
 
-host="tcpproxy"
+host="kimo-tcpproxy"
 user="kimo"
 password="123"
 

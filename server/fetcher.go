@@ -24,13 +24,20 @@ type RawProcess struct {
 	TCPProxyConn *TCPProxyConn
 	AgentProcess *AgentProcess
 
-	AgentAddress IPPort
+	TCPProxyExist bool
 }
 
 type AgentProcess struct {
 	Address  IPPort
 	Response *AgentResponse
 	err      error
+}
+
+func (rp *RawProcess) AgentAddress() IPPort {
+	if rp.TCPProxyConn != nil {
+		return IPPort{IP: rp.TCPProxyConn.ClientOut.IP, Port: rp.TCPProxyConn.ClientOut.Port}
+	}
+	return IPPort{IP: rp.MysqlRow.Address.IP, Port: rp.MysqlRow.Address.Port}
 }
 
 func (ap *AgentProcess) Hostname() string {
@@ -50,7 +57,7 @@ func (ap *AgentProcess) Hostname() string {
 }
 
 func (rp *RawProcess) Detail() string {
-	if rp.TCPProxyConn == nil { // todo: tcpproxy might be absent.
+	if rp.TCPProxyExist && rp.TCPProxyConn == nil {
 		return "No connection found on tcpproxy"
 	}
 
@@ -76,17 +83,16 @@ func NewFetcher(cfg config.ServerConfig) *Fetcher {
 func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *RawProcess) {
 	defer wg.Done()
 
-	ac := NewAgentClient(rp.AgentAddress.IP, f.AgentPort)
-	ar, err := ac.Get(ctx, rp.AgentAddress.Port)
+	ac := NewAgentClient(rp.AgentAddress().IP, f.AgentPort)
+	ar, err := ac.Get(ctx, rp.AgentAddress().Port)
 	rp.AgentProcess = &AgentProcess{Response: ar, err: err}
 }
 
 func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
 	log.Infoln("Adding tcpproxy conns...")
 	for _, rp := range rps {
-		conn := findTCPProxyConn(rp.AgentAddress, conns)
+		conn := findTCPProxyConn(rp.AgentAddress(), conns)
 		if conn != nil {
-			rp.AgentAddress = IPPort{IP: conn.ClientOut.IP, Port: conn.ClientOut.Port}
 			rp.TCPProxyConn = conn
 		}
 	}
@@ -97,7 +103,6 @@ func createRawProcesses(rows []*MysqlRow) []*RawProcess {
 	var rps []*RawProcess
 	for _, row := range rows {
 		rp := &RawProcess{MysqlRow: row}
-		rp.AgentAddress = IPPort{IP: row.Address.IP, Port: row.Address.Port}
 		rps = append(rps, rp)
 	}
 	return rps
@@ -117,6 +122,10 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	rps := createRawProcesses(rows)
 
 	if f.TCPProxyClient != nil {
+		for _, rp := range rps {
+			rp.TCPProxyExist = true
+		}
+
 		log.Infoln("Fetching tcpproxy conns...")
 		tps, err := f.fetchTcpProxy(ctx)
 		if err != nil {

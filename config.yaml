@@ -8,12 +8,12 @@ server:
     listen_address: "0.0.0.0:3322"
     poll_interval: "12s"
     mysql:
-        dsn: "kimo:123@(mysql:3306)/information_schema"
+        dsn: "kimo:123@(kimo-mysql:3306)/information_schema"
     agent:
         # kimo-agent listens this port.
         port: 3333
     tcpproxy:
-        mgmt_address: "tcpproxy:3307"
+        mgmt_address: "kimo-tcpproxy:3307"
     metric:
         # If one of these pattern match whole cmdline will be exposed as , otherwise it will be truncated.
         cmdline_patterns:
