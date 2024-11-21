@@ -32,9 +32,6 @@ func (s *Server) pollAgents(ctx context.Context) {
 }
 
 func (s *Server) doPoll(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
-	defer cancel()
-
 	type result struct {
 		rps []*RawProcess
 		err error
@@ -83,15 +80,13 @@ func (s *Server) createKimoProcesses(rps []*RawProcess) []KimoProcess {
 			State:     rp.MysqlRow.State.String,
 			Info:      rp.MysqlRow.Info.String,
 		}
-		if rp.AgentProcess != nil {
-			kp.CmdLine = rp.AgentProcess.CmdLine
-			kp.Status = strings.ToLower(rp.AgentProcess.Status)
-			kp.Pid = rp.AgentProcess.Pid
-			kp.Host = rp.AgentProcess.Hostname
+		if rp.AgentProcess != nil && rp.AgentProcess.Response != nil {
+			kp.CmdLine = rp.AgentProcess.Response.CmdLine
+			kp.ConnectionStatus = strings.ToLower(rp.AgentProcess.Response.ConnectionStatus)
+			kp.Pid = int32(rp.AgentProcess.Response.Pid)
+			kp.Host = rp.AgentProcess.Response.Hostname
 		} else {
-			if rp.Details != nil {
-				kp.Detail = rp.Detail()
-			}
+			kp.Detail = rp.Detail()
 		}
 		kps = append(kps, kp)
 	}

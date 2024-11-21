@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"kimo/config"
-	"kimo/types"
 	"net"
 	"net/http"
 
@@ -15,10 +14,10 @@ import (
 
 // TCPProxyResult is type for defining a connection through TCP Proxy to MySQL
 type TCPProxyConn struct {
-	ClientOut types.IPPort `json:"client_out"`
-	ProxyIn   types.IPPort `json:"proxy_in"`
-	ProxyOut  types.IPPort `json:"proxy_out"`
-	ServerIn  types.IPPort `json:"server_in"`
+	ClientOut IPPort `json:"client_out"`
+	ProxyIn   IPPort `json:"proxy_in"`
+	ProxyOut  IPPort `json:"proxy_out"`
+	ServerIn  IPPort `json:"server_in"`
 }
 
 // TCPConnResponse is a type for TCP Proxy management api response
@@ -77,7 +76,7 @@ func findHostIP(host string) (string, error) {
 	return ip.String(), nil
 }
 
-func findTCPProxyConn(addr types.IPPort, proxyConns []*TCPProxyConn) *TCPProxyConn {
+func findTCPProxyConn(addr IPPort, proxyConns []*TCPProxyConn) *TCPProxyConn {
 	ipAddr, err := findHostIP(addr.IP)
 	if err != nil {
 		log.Debugln(err.Error())

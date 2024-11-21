@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"kimo/config"
-	"kimo/types"
 	"sync"
 	"time"
 
@@ -23,59 +22,44 @@ type Fetcher struct {
 type RawProcess struct {
 	MysqlRow     *MysqlRow
 	TCPProxyConn *TCPProxyConn
-	AgentProcess *types.AgentProcess
-	Details      []*Detail
+	AgentProcess *AgentProcess
 
-	AgentAddress types.IPPort
+	AgentAddress IPPort
+}
+
+type AgentProcess struct {
+	Address  IPPort
+	Response *AgentResponse
+	err      error
+}
+
+func (ap *AgentProcess) Hostname() string {
+	if ap.Response != nil {
+		return ap.Response.Hostname
+	}
+
+	if ap.err != nil {
+		if aErr, ok := ap.err.(*AgentError); ok {
+			return aErr.Hostname
+		} else {
+			return "ERROR"
+		}
+	}
+
+	return "ERROR" // todo: find a better name.
 }
 
 func (rp *RawProcess) Detail() string {
-	var s string
-	if rp.Details == nil {
-		return ""
+	if rp.TCPProxyConn == nil { // todo: tcpproxy might be absent.
+		return "No connection found on tcpproxy"
 	}
 
-	for _, d := range rp.Details {
-		s += d.String() + " "
+	if rp.AgentProcess != nil {
+		if rp.AgentProcess.err != nil {
+			return rp.AgentProcess.err.Error()
+		}
 	}
-	return s
-}
-
-type Detail struct {
-	Hostname string
-	Status   Status
-}
-
-func (d *Detail) String() string {
-	if d.Hostname != "" {
-		return fmt.Sprintf("%s - Host: %s.", d.Status.String(), d.Hostname)
-	} else {
-		return fmt.Sprintf("%s.", d.Status.String())
-	}
-}
-
-type Status int
-
-const (
-	StatusAgentNotFound Status = iota
-	StatusAgentCantConnect
-	StatusAgentError
-	StatusProxyNotFound
-)
-
-func (s Status) String() string {
-	switch s {
-	case StatusAgentError:
-		return "Agent returned error"
-	case StatusAgentNotFound:
-		return "Process not found on agent"
-	case StatusAgentCantConnect:
-		return "Cant connect to agent"
-	case StatusProxyNotFound:
-		return "Connection not found on proxy"
-	default:
-		return "UNKNOWN"
-	}
+	return ""
 }
 
 // NewFetcher is constructor fuction for creating a new Fetcher object
@@ -93,19 +77,8 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 	defer wg.Done()
 
 	ac := NewAgentClient(rp.AgentAddress.IP, f.AgentPort)
-	ap, err := ac.Get(ctx, rp.AgentAddress.Port)
-	if err != nil {
-		if notFoundErr, ok := err.(*NotFoundError); ok {
-			rp.Details = append(rp.Details, &Detail{Status: StatusAgentNotFound, Hostname: notFoundErr.Host})
-		} else if _, ok := err.(*CantConnectError); ok {
-			h := fmt.Sprintf("%s:%d", rp.AgentAddress.IP, f.AgentPort)
-			rp.Details = append(rp.Details, &Detail{Status: StatusAgentCantConnect, Hostname: h})
-		} else {
-			rp.Details = append(rp.Details, &Detail{Status: StatusAgentError})
-		}
-	} else {
-		rp.AgentProcess = ap
-	}
+	ar, err := ac.Get(ctx, rp.AgentAddress.Port)
+	rp.AgentProcess = &AgentProcess{Response: ar, err: err}
 }
 
 func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
@@ -113,7 +86,7 @@ func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
 	for _, rp := range rps {
 		conn := findTCPProxyConn(rp.AgentAddress, conns)
 		if conn != nil {
-			rp.AgentAddress = types.IPPort{IP: conn.ClientOut.IP, Port: conn.ClientOut.Port}
+			rp.AgentAddress = IPPort{IP: conn.ClientOut.IP, Port: conn.ClientOut.Port}
 			rp.TCPProxyConn = conn
 		}
 	}
@@ -124,7 +97,7 @@ func createRawProcesses(rows []*MysqlRow) []*RawProcess {
 	var rps []*RawProcess
 	for _, row := range rows {
 		rp := &RawProcess{MysqlRow: row}
-		rp.AgentAddress = types.IPPort{IP: row.Address.IP, Port: row.Address.Port}
+		rp.AgentAddress = IPPort{IP: row.Address.IP, Port: row.Address.Port}
 		rps = append(rps, rp)
 	}
 	return rps

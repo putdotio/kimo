@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"kimo/config"
-	"kimo/types"
 	"net/http"
 	"os"
 	"strconv"
@@ -19,6 +18,13 @@ type Agent struct {
 	Config   *config.AgentConfig
 	Conns    []gopsutilNet.ConnectionStat
 	Hostname string
+}
+
+type Response struct {
+	Status  string `json:"status"`
+	Pid     int32  `json:"pid"`
+	Name    string `json:"name"`
+	CmdLine string `json:"cmdline"`
 }
 
 // NewAgent is constuctor function for Agent type
@@ -85,7 +91,7 @@ func (a *Agent) findProc(port uint32) *hostProc {
 	return nil
 }
 
-func (a *Agent) createAgentProcess(proc *hostProc) *types.AgentProcess {
+func createResponse(proc *hostProc) *Response {
 	if proc == nil {
 		return nil
 	}
@@ -97,17 +103,18 @@ func (a *Agent) createAgentProcess(proc *hostProc) *types.AgentProcess {
 	if err != nil {
 		log.Debugf("Cmdline could not found for %d\n", proc.process.Pid)
 	}
-	return &types.AgentProcess{
-		Status:   proc.conn.Status,
-		Pid:      proc.conn.Pid,
-		Name:     name,
-		CmdLine:  cmdline,
-		Hostname: a.Hostname,
+	return &Response{
+		Status:  proc.conn.Status,
+		Pid:     proc.conn.Pid,
+		Name:    name,
+		CmdLine: cmdline,
 	}
 }
 
 // Process is handler for serving process info
 func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("X-Kimo-Hostname", a.Hostname)
+
 	// todo: cache result for a short period (10s? 30s?)
 	port, err := parsePortParam(w, req)
 	if err != nil {
@@ -115,14 +122,13 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	p := a.findProc(port)
-	ap := a.createAgentProcess(p)
-
-	w.Header().Set("Content-Type", "application/json")
-	if ap == nil {
-		w.Header().Set("X-Hostname", a.Hostname)
-		http.Error(w, "Can not create agent process", http.StatusNotFound)
+	if p == nil {
+		http.Error(w, "Connection not found", http.StatusNotFound)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	ap := createResponse(p)
 	err = json.NewEncoder(w).Encode(&ap)
 	if err != nil {
 		http.Error(w, "Can not encode agent process", http.StatusInternalServerError)

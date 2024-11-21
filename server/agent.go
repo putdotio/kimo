@@ -3,9 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"kimo/types"
 	"net/http"
 
 	"github.com/cenkalti/log"
@@ -17,20 +15,21 @@ type AgentClient struct {
 	Port uint32
 }
 
-type NotFoundError struct {
-	Host string
+type AgentError struct {
+	Hostname string
+	Status   string
 }
 
-func (n *NotFoundError) Error() string {
-	return fmt.Sprintf("Host %s returned 404\n", n.Host)
+type AgentResponse struct {
+	Pid              int
+	Name             string
+	CmdLine          string
+	Hostname         string
+	ConnectionStatus string
 }
 
-type CantConnectError struct {
-	Host string
-}
-
-func (c *CantConnectError) Error() string {
-	return fmt.Sprintf("Cant connect to %s\n", c.Host)
+func (ae *AgentError) Error() string {
+	return fmt.Sprintf("Agent error. Host: %s - status: %s\n", ae.Hostname, ae.Status)
 }
 
 // NewAgentClient is constructor function for creating Agent object
@@ -42,7 +41,7 @@ func NewAgentClient(host string, port uint32) *AgentClient {
 }
 
 // Fetch is used to fetch agent process
-func (ac *AgentClient) Get(ctx context.Context, port uint32) (*types.AgentProcess, error) {
+func (ac *AgentClient) Get(ctx context.Context, port uint32) (*AgentResponse, error) {
 	url := fmt.Sprintf("http://%s:%d/proc?port=%d", ac.Host, ac.Port, port)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -52,28 +51,34 @@ func (ac *AgentClient) Get(ctx context.Context, port uint32) (*types.AgentProces
 	log.Debugf("Requesting to %s\n", url)
 	response, err := client.Do(req)
 	if err != nil {
-		return nil, &CantConnectError{Host: ac.Host}
+		return nil, err
 	}
 
 	defer response.Body.Close()
+	hostname := response.Header.Get("X-Kimo-Hostname")
 	if response.StatusCode != 200 {
-		if response.StatusCode == 404 {
-			hostname := response.Header.Get("X-Hostname")
-			if hostname != "" {
-				return nil, &NotFoundError{Host: hostname}
-			}
-		}
-		log.Debugf("Error: %s -> %s\n", url, response.Status)
-		return nil, errors.New("status code is not 200")
+		return nil, &AgentError{Hostname: hostname, Status: response.Status}
 	}
 
-	ap := types.AgentProcess{}
-	err = json.NewDecoder(response.Body).Decode(&ap)
+	type result struct {
+		Status  string `json:"status"`
+		Pid     int32  `json:"pid"`
+		Name    string `json:"name"`
+		CmdLine string `json:"cmdline"`
+	}
+	r := result{}
+	err = json.NewDecoder(response.Body).Decode(&r)
 
 	if err != nil {
 		log.Errorln(err.Error())
 		return nil, err
 	}
 
-	return &ap, nil
+	return &AgentResponse{
+			ConnectionStatus: r.Status,
+			Pid:              int(r.Pid),
+			Name:             r.Name,
+			CmdLine:          r.CmdLine,
+			Hostname:         hostname},
+		nil
 }

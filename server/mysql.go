@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"kimo/config"
-	"kimo/types"
 	"strconv"
 	"strings"
 
@@ -21,7 +20,7 @@ type MysqlRow struct {
 	Time    string         `json:"time"`
 	State   sql.NullString `json:"state"`
 	Info    sql.NullString `json:"info"`
-	Address types.IPPort   `json:"address"`
+	Address IPPort         `json:"address"`
 }
 
 // NewMysqlClient is used to create a Mysql type.
@@ -75,7 +74,7 @@ func (mc *MysqlClient) Get(ctx context.Context) ([]*MysqlRow, error) {
 			log.Errorf("error during string to int32: %s\n", err)
 			continue
 		}
-		mp.Address = types.IPPort{
+		mp.Address = IPPort{
 			IP:   s[0],
 			Port: uint32(parsedPort),
 		}
