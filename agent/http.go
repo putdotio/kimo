@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/cenkalti/log"
 	gopsutilNet "github.com/shirou/gopsutil/v4/net"
@@ -16,8 +17,21 @@ import (
 // Agent is type for handling agent operations
 type Agent struct {
 	Config   *config.AgentConfig
-	Conns    []gopsutilNet.ConnectionStat
+	conns    []gopsutilNet.ConnectionStat
 	Hostname string
+	mu       sync.RWMutex // protects conns
+}
+
+func (a *Agent) SetConns(conns []gopsutilNet.ConnectionStat) {
+	a.mu.Lock()
+	a.conns = conns
+	a.mu.Unlock()
+}
+
+func (a *Agent) GetConns() []gopsutilNet.ConnectionStat {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.conns
 }
 
 type Response struct {
@@ -67,7 +81,7 @@ type NetworkProcess struct {
 }
 
 func (a *Agent) findProcess(port uint32) *NetworkProcess {
-	for _, conn := range a.Conns {
+	for _, conn := range a.GetConns() {
 		if conn.Laddr.Port != port {
 			continue
 		}

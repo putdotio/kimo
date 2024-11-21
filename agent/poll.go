@@ -35,7 +35,7 @@ func (a *Agent) doPoll(ctx context.Context) error {
 		return err
 	}
 
-	a.Conns = conns
+	a.SetConns(conns)
 
 	log.Infof("Updated connections: count=%d", len(conns))
 	return nil

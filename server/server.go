@@ -2,6 +2,7 @@ package server
 
 import (
 	"kimo/config"
+	"sync"
 
 	"github.com/cenkalti/log"
 )
@@ -26,21 +27,34 @@ type KimoProcess struct {
 type Server struct {
 	Config           *config.ServerConfig
 	PrometheusMetric *PrometheusMetric
-	KimoProcesses    []KimoProcess
+	kimoProcesses    []KimoProcess
 	Fetcher          *Fetcher
 
+	mu        sync.RWMutex // proctects kimoProcesses
 	AgentPort uint32
+}
+
+func (s *Server) SetKimoProcesses(kps []KimoProcess) {
+	s.mu.Lock()
+	s.kimoProcesses = kps
+	s.mu.Unlock()
+}
+
+func (s *Server) GetKimoProcesses() []KimoProcess {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.kimoProcesses
 }
 
 // NewServer is used to create a new Server object
 func NewServer(cfg *config.ServerConfig) *Server {
 	log.Infoln("Creating a new server...")
-	s := new(Server)
-	s.Config = cfg
-	s.PrometheusMetric = NewPrometheusMetric(cfg.Metric.CmdlinePatterns)
-	s.KimoProcesses = make([]KimoProcess, 0)
+	s := &Server{
+		Config:           cfg,
+		PrometheusMetric: NewPrometheusMetric(cfg.Metric.CmdlinePatterns),
+		kimoProcesses:    make([]KimoProcess, 0),
+		AgentPort:        cfg.Agent.Port,
+	}
 	s.Fetcher = NewFetcher(*s.Config)
-
-	s.AgentPort = cfg.Agent.Port
 	return s
 }

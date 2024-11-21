@@ -56,15 +56,15 @@ func (s *Server) doPoll(ctx context.Context) error {
 		if r.err != nil {
 			return r.err
 		}
-		s.KimoProcesses = s.createKimoProcesses(r.rps)
-		s.PrometheusMetric.Set(s.KimoProcesses)
-		log.Debugf("%d processes are set\n", len(s.KimoProcesses))
+		s.SetKimoProcesses(createKimoProcesses(r.rps))
+		s.PrometheusMetric.Set(s.GetKimoProcesses())
+		log.Debugf("%d processes are set\n", len(s.GetKimoProcesses()))
 		return nil
 	}
 
 }
 
-func (s *Server) createKimoProcesses(rps []*RawProcess) []KimoProcess {
+func createKimoProcesses(rps []*RawProcess) []KimoProcess {
 	kps := make([]KimoProcess, 0)
 	for _, rp := range rps {
 		ut, err := strconv.ParseUint(rp.MysqlRow.Time, 10, 32)

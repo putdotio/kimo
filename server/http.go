@@ -25,7 +25,7 @@ func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &Response{
-		Processes: s.KimoProcesses,
+		Processes: s.GetKimoProcesses(),
 	}
 	err := json.NewEncoder(w).Encode(response)
 	if err != nil {
