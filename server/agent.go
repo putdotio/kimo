@@ -33,10 +33,10 @@ func (ae *AgentError) Error() string {
 }
 
 // NewAgentClient is constructor function for creating Agent object
-func NewAgentClient(host string, port uint32) *AgentClient {
+func NewAgentClient(address IPPort) *AgentClient {
 	ac := new(AgentClient)
-	ac.Host = host
-	ac.Port = port
+	ac.Host = address.IP
+	ac.Port = address.Port
 	return ac
 }
 

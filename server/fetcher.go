@@ -83,7 +83,7 @@ func NewFetcher(cfg config.ServerConfig) *Fetcher {
 func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *RawProcess) {
 	defer wg.Done()
 
-	ac := NewAgentClient(rp.AgentAddress().IP, f.AgentPort)
+	ac := NewAgentClient(IPPort{IP: rp.AgentAddress().IP, Port: f.AgentPort})
 	ar, err := ac.Get(ctx, rp.AgentAddress().Port)
 	rp.AgentProcess = &AgentProcess{Response: ar, err: err}
 }
