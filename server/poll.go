@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cenkalti/log"
@@ -84,6 +85,7 @@ func (s *Server) createKimoProcesses(rps []*RawProcess) []KimoProcess {
 		}
 		if rp.AgentProcess != nil {
 			kp.CmdLine = rp.AgentProcess.CmdLine
+			kp.Status = strings.ToLower(rp.AgentProcess.Status)
 			kp.Pid = rp.AgentProcess.Pid
 			kp.Host = rp.AgentProcess.Hostname
 		} else {
