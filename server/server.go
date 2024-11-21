@@ -27,23 +27,22 @@ type KimoProcess struct {
 type Server struct {
 	Config           *config.ServerConfig
 	PrometheusMetric *PrometheusMetric
-	kimoProcesses    []KimoProcess
 	Fetcher          *Fetcher
-
-	mu        sync.RWMutex // proctects kimoProcesses
-	AgentPort uint32
+	AgentPort        uint32
+	processes        []KimoProcess
+	mu               sync.RWMutex // proctects processes
 }
 
-func (s *Server) SetKimoProcesses(kps []KimoProcess) {
+func (s *Server) SetProcesses(kps []KimoProcess) {
 	s.mu.Lock()
-	s.kimoProcesses = kps
+	s.processes = kps
 	s.mu.Unlock()
 }
 
-func (s *Server) GetKimoProcesses() []KimoProcess {
+func (s *Server) GetProcesses() []KimoProcess {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.kimoProcesses
+	return s.processes
 }
 
 // NewServer is used to create a new Server object
@@ -52,7 +51,7 @@ func NewServer(cfg *config.ServerConfig) *Server {
 	s := &Server{
 		Config:           cfg,
 		PrometheusMetric: NewPrometheusMetric(cfg.Metric.CmdlinePatterns),
-		kimoProcesses:    make([]KimoProcess, 0),
+		processes:        make([]KimoProcess, 0),
 		AgentPort:        cfg.Agent.Port,
 	}
 	s.Fetcher = NewFetcher(*s.Config)
