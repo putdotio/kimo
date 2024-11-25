@@ -20,30 +20,22 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "config, c",
-			Value: "/etc/kimo.toml",
+			Value: "/etc/kimo.yaml",
 			Usage: "configuration file path",
 		},
 		cli.BoolFlag{
 			Name:  "debug, d",
 			Usage: "enable debug log",
 		},
-		cli.BoolFlag{
-			Name:  "no-debug, D",
-			Usage: "disable debug log",
-		},
 	}
 	app.Before = func(c *cli.Context) error {
-		err := cfg.ReadFile(c.GlobalString("config"))
+		err := cfg.LoadConfig(c.GlobalString("config"))
 		if err != nil {
 			log.Errorf("Cannot read config: %s\n", err)
 		}
 		if c.IsSet("debug") {
 			cfg.Debug = true
 		}
-		if c.IsSet("no-debug") {
-			cfg.Debug = false
-		}
-
 		if cfg.Debug {
 			log.SetLevel(log.DEBUG)
 		} else {
@@ -57,7 +49,7 @@ func main() {
 			Name:  "agent",
 			Usage: "run agent",
 			Action: func(c *cli.Context) error {
-				a := agent.NewAgent(cfg)
+				a := agent.NewAgent(&cfg.Agent)
 				err := a.Run()
 				if err != nil {
 					return err
@@ -69,7 +61,7 @@ func main() {
 			Name:  "server",
 			Usage: "run server",
 			Action: func(c *cli.Context) error {
-				s := server.NewServer(cfg)
+				s := server.NewServer(&cfg.Server)
 				s.Config = &cfg.Server
 				err := s.Run()
 				if err != nil {

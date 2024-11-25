@@ -2,42 +2,29 @@ package agent
 
 import (
 	"encoding/json"
-	"kimo/config"
-	"kimo/types"
 	"net/http"
-	"os"
 	"strconv"
-	"time"
 
 	"github.com/cenkalti/log"
 	gopsutilNet "github.com/shirou/gopsutil/v4/net"
 	gopsutilProcess "github.com/shirou/gopsutil/v4/process"
 )
 
-// Agent is type for handling agent operations
-type Agent struct {
-	Config   *config.Agent
-	Conns    []gopsutilNet.ConnectionStat
-	Hostname string
+// Response contains basic process information for API responses.
+type Response struct {
+	Status  string `json:"status"`
+	Pid     int32  `json:"pid"`
+	Name    string `json:"name"`
+	CmdLine string `json:"cmdline"`
 }
 
-// NewAgent is constuctor function for Agent type
-func NewAgent(cfg *config.Config) *Agent {
-	d := new(Agent)
-	d.Config = &cfg.Agent
-	d.Hostname = getHostname()
-	return d
+// NetworkProcess represents process with its network connection.
+type NetworkProcess struct {
+	process *gopsutilProcess.Process
+	conn    gopsutilNet.ConnectionStat
 }
 
-func getHostname() string {
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Errorf("Hostname could not found")
-		hostname = "UNKNOWN"
-	}
-	return hostname
-}
-
+// parsePortParam parses and returns port number from the request.
 func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	portParam, ok := req.URL.Query()["port"]
 	log.Debugf("Looking for process of port: %s\n", portParam)
@@ -55,13 +42,9 @@ func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	return uint32(p), nil
 }
 
-type hostProc struct {
-	process *gopsutilProcess.Process
-	conn    gopsutilNet.ConnectionStat
-}
-
-func (a *Agent) findProc(port uint32) *hostProc {
-	for _, conn := range a.Conns {
+// findProcess finds process from connections by given port.
+func findProcess(port uint32, conns []gopsutilNet.ConnectionStat) *NetworkProcess {
+	for _, conn := range conns {
 		if conn.Laddr.Port != port {
 			continue
 		}
@@ -77,7 +60,7 @@ func (a *Agent) findProc(port uint32) *hostProc {
 			return nil
 		}
 
-		return &hostProc{
+		return &NetworkProcess{
 			process: process,
 			conn:    conn,
 		}
@@ -85,85 +68,47 @@ func (a *Agent) findProc(port uint32) *hostProc {
 	return nil
 }
 
-func (a *Agent) createAgentProcess(proc *hostProc) *types.AgentProcess {
-	if proc == nil {
+// createResponse creates Response from given NetworkProcess parameter.
+func createResponse(np *NetworkProcess) *Response {
+	if np == nil {
 		return nil
 	}
-	name, err := proc.process.Name()
+	name, err := np.process.Name()
 	if err != nil {
 		name = ""
 	}
-	cl, err := proc.process.CmdlineSlice()
+	cmdline, err := np.process.Cmdline()
 	if err != nil {
-		log.Debugf("Cmdline could not found for %d\n", proc.process.Pid)
+		log.Debugf("Cmdline could not found for %d\n", np.process.Pid)
 	}
-	return &types.AgentProcess{
-		Laddr:    types.IPPort{IP: proc.conn.Laddr.IP, Port: proc.conn.Laddr.Port},
-		Status:   proc.conn.Status,
-		Pid:      proc.conn.Pid,
-		Name:     name,
-		CmdLine:  cl,
-		Hostname: a.Hostname,
+	return &Response{
+		Status:  np.conn.Status,
+		Pid:     np.conn.Pid,
+		Name:    name,
+		CmdLine: cmdline,
 	}
 }
 
 // Process is handler for serving process info
 func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("X-Kimo-Hostname", a.Hostname)
+
 	// todo: cache result for a short period (10s? 30s?)
 	port, err := parsePortParam(w, req)
 	if err != nil {
 		http.Error(w, "port param is required", http.StatusBadRequest)
 		return
 	}
-	p := a.findProc(port)
-	ap := a.createAgentProcess(p)
+	p := findProcess(port, a.GetConns())
+	if p == nil {
+		http.Error(w, "Connection not found", http.StatusNotFound)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if ap == nil {
-		json.NewEncoder(w).Encode(&types.AgentProcess{
-			Hostname: a.Hostname,
-		})
-		return
-	}
-	json.NewEncoder(w).Encode(&ap)
-	return
-}
-
-func (a *Agent) pollConns() {
-	// todo: run with context
-	log.Debugln("Polling...")
-	ticker := time.NewTicker(a.Config.PollDuration * time.Second)
-
-	for {
-		a.getConns() // poll immediately at the initialization
-		select {
-		// todo: add return case
-		case <-ticker.C:
-			a.getConns()
-		}
-	}
-
-}
-func (a *Agent) getConns() {
-	// This is an expensive operation.
-	// So, we need to call it infrequent to prevent high load on servers those run kimo agents.
-	conns, err := gopsutilNet.Connections("all")
+	ap := createResponse(p)
+	err = json.NewEncoder(w).Encode(&ap)
 	if err != nil {
-		log.Errorln(err.Error())
-		return
+		http.Error(w, "Can not encode agent process", http.StatusInternalServerError)
 	}
-	a.Conns = conns
-}
-
-// Run is main function to run http server
-func (a *Agent) Run() error {
-	go a.pollConns()
-
-	http.HandleFunc("/proc", a.Process)
-	err := http.ListenAndServe(a.Config.ListenAddress, nil)
-	if err != nil {
-		log.Errorln(err.Error())
-		return err
-	}
-	return nil
 }

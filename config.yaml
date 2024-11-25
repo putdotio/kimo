@@ -1,0 +1,20 @@
+debug: true
+
+agent:
+    listen_address: "0.0.0.0:3333"
+    poll_interval: "10s"
+
+server:
+    listen_address: "0.0.0.0:3322"
+    poll_interval: "12s"
+    mysql:
+        dsn: "kimo:123@(kimo-mysql:3306)/information_schema"
+    agent:
+        # kimo-agent listens this port.
+        port: 3333
+    tcpproxy:
+        mgmt_address: "kimo-tcpproxy:3307"
+    metric:
+        # If one of these patterns match, whole cmdline will be exposed as it is, otherwise it will be truncated.
+        cmdline_patterns:
+            - "mysql*"

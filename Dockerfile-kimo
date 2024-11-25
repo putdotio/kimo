@@ -1,18 +1,33 @@
 FROM golang:1.23
 
-RUN apt-get update && apt-get -y install default-mysql-client
+# Install system dependencies
+RUN apt-get update && \
+    apt-get -y install default-mysql-client && \
+    rm -rf /var/lib/apt/lists/*
 
 ENV GOPATH=/go
 ENV PATH=$PATH:$GOPATH/bin
 
-RUN mkdir /go/src/kimo
-COPY go.mod go.sum /go/src/kimo/
-COPY ./server/static/ /go/src/kimo/server/static
+WORKDIR /go/src/kimo
 
-RUN cd /go/src/kimo && go install github.com/rakyll/statik
-RUN cd /go/src/kimo && /go/bin/statik -src=./server/static -include='*.html'
+# Copy dependency files first to leverage cache
+COPY go.mod go.sum ./
 
-COPY . /go/src/kimo
-RUN cd /go/src/kimo && go install
+# Download dependencies separately
+RUN go mod download
 
-ADD config.toml /etc/kimo.toml
+# Install statik before copying other files
+RUN go install github.com/rakyll/statik
+
+# Copy only static files needed for statik
+COPY ./server/static/ ./server/static/
+RUN /go/bin/statik -src=./server/static -include='*.html'
+
+# Copy remaining source code
+COPY . .
+
+# Build the application
+RUN go build -o /go/bin/kimo
+
+# Add config file
+COPY config.yaml /etc/kimo.yaml

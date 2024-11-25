@@ -2,24 +2,26 @@ version: '3.9'
 services:
   mysql:
     image: kimo/mysql
-    container_name: mysql
+    container_name: kimo-mysql
     build:
       dockerfile: Dockerfile-mysql
       context: .
     ports:
       - "3306:3306"
   tcpproxy:
-    image: kimo/tcpproxy
-    container_name: tcpproxy
-    build:
-      dockerfile: Dockerfile-tcpproxy
-      context: .
+    image: cenkalti/tcpproxy
+    container_name: kimo-tcpproxy
     depends_on:
       - mysql
     ports:
       - "3307:3307"
     tty: true
     privileged: true
+    command:
+      - "-m"
+      - "0.0.0.0:3307"
+      - "0.0.0.0:3306"
+      - "mysql:3306"
   kimo:
     image: kimo
     container_name: kimo
@@ -39,8 +41,9 @@ services:
     depends_on:
       - tcpproxy
     tty: true
+    scale: 3
   kimo-server:
-    image: kimo-server
+    image: kimo
     container_name: kimo-server
     entrypoint: kimo --debug server
     ports:

@@ -6,58 +6,87 @@ import (
 	"errors"
 	"fmt"
 	"kimo/config"
-	"kimo/types"
+	"net"
 	"net/http"
-	"time"
 
 	"github.com/cenkalti/log"
 )
 
-// TCPProxyRecord is type for defining a connection through TCP Proxy to MySQL
-type TCPProxyRecord struct {
-	ClientOut types.IPPort `json:"client_out"`
-	ProxyIn   types.IPPort `json:"proxy_in"`
-	ProxyOut  types.IPPort `json:"proxy_out"`
-	ServerIn  types.IPPort `json:"server_in"`
+// TCPProxyResult represents connection through TCPProxy to MySQL
+type TCPProxyConn struct {
+	ClientOut IPPort `json:"client_out"`
+	ProxyIn   IPPort `json:"proxy_in"`
+	ProxyOut  IPPort `json:"proxy_out"`
+	ServerIn  IPPort `json:"server_in"`
 }
 
-// TCPConns is a type for TCP Proxy management api response
-type TCPConns struct {
-	Records []*TCPProxyRecord `json:"conns"`
+// TCPConnResponse represents TCPProxy management API response
+type TCPConnResponse struct {
+	Records []*TCPProxyConn `json:"conns"`
 }
 
-// TCPProxy is used for getting info from tcp proxy
-type TCPProxy struct {
+// TCPProxyClient represents a TCPProxy client that manages connection details and stores TCPProxy management results.
+type TCPProxyClient struct {
 	MgmtAddress string
-	HTTPClient  *http.Client
 }
 
-// NewTCPProxy is used to create a new TCPProxy
-func NewTCPProxy(cfg config.Server) *TCPProxy {
-	t := new(TCPProxy)
-	t.MgmtAddress = cfg.TCPProxyMgmtAddress
-	t.HTTPClient = NewHTTPClient(cfg.TCPProxyConnectTimeout*time.Second, cfg.TCPProxyReadTimeout*time.Second)
-	return t
+// NewServer creates an returns a new *TCPProxyClient
+func NewTCPProxyClient(cfg config.TCPProxy) *TCPProxyClient {
+	tc := new(TCPProxyClient)
+	tc.MgmtAddress = cfg.MgmtAddress
+	return tc
 }
 
-// Fetch is used to fetch connection records from tcp proxy.
-func (t *TCPProxy) Fetch(ctx context.Context, recordsC chan<- []*TCPProxyRecord, errC chan<- error) {
-	url := fmt.Sprintf("http://%s/conns?json=true", t.MgmtAddress)
-	log.Infof("Requesting to tcpproxy %s\n", url)
-	response, err := t.HTTPClient.Get(url)
+// Get gets connection records from TCPProxy.
+func (tc *TCPProxyClient) Get(ctx context.Context) ([]*TCPProxyConn, error) {
+	url := fmt.Sprintf("http://%s/conns?json=true", tc.MgmtAddress)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		errC <- err
-		return
+		return nil, err
+	}
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		log.Errorf("Error: %s\n", response.Status)
-		errC <- errors.New("status code is not 200")
-		return
+		return nil, errors.New("status code is not 200")
 	}
 
-	var conns TCPConns
+	var conns TCPConnResponse
 	err = json.NewDecoder(response.Body).Decode(&conns)
-	log.Infof("Got %d TCP proxy records \n", len(conns.Records))
-	recordsC <- conns.Records
+	if err != nil {
+		log.Errorln("Can not decode conns")
+		return nil, errors.New("can not decode tcpproxy response")
+	}
+	return conns.Records, nil
+}
+
+func findHostIP(host string) (string, error) {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return "", err
+		}
+		return string(ips[0].String()), nil
+	}
+	return ip.String(), nil
+}
+
+func findTCPProxyConn(addr IPPort, proxyConns []*TCPProxyConn) *TCPProxyConn {
+	ipAddr, err := findHostIP(addr.IP)
+	if err != nil {
+		log.Debugln(err.Error())
+		return nil
+	}
+
+	for _, conn := range proxyConns {
+		if conn.ProxyOut.IP == ipAddr && conn.ProxyOut.Port == addr.Port {
+			return conn
+		}
+	}
+	return nil
 }

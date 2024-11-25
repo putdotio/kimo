@@ -3,76 +3,114 @@ package server
 import (
 	"context"
 	"kimo/config"
-	"time"
+	"net/http"
+	"strconv"
+	"sync"
 
 	"github.com/cenkalti/log"
 )
 
-// Process is the final processes that is combined with AgentProcess + TCPProxyRecord + MysqlProcess
-type Process struct {
-	ID        int32    `json:"id"`
-	MysqlUser string   `json:"mysql_user"`
-	DB        string   `json:"db"`
-	Command   string   `json:"command"`
-	Time      uint32   `json:"time"`
-	State     string   `json:"state"`
-	Info      string   `json:"info"`
-	CmdLine   []string `json:"cmdline"`
-	Pid       int32    `json:"pid"`
-	Host      string   `json:"host"`
+// KimoProcess is the final process that is combined with AgentProcess + TCPProxyConn + MysqlProcess
+type KimoProcess struct {
+	ID               int32  `json:"id"`
+	MysqlUser        string `json:"mysql_user"`
+	DB               string `json:"db"`
+	Command          string `json:"command"`
+	Time             uint32 `json:"time"`
+	State            string `json:"state"`
+	Info             string `json:"info"`
+	CmdLine          string `json:"cmdline"`
+	ConnectionStatus string `json:"status"`
+	Pid              int    `json:"pid,omitempty"`
+	Host             string `json:"host"`
+	Detail           string `json:"detail"`
 }
 
-// Server is a type for handling server side
+// Server is a type for handling server side operations
 type Server struct {
-	Config           *config.Server
+	Config           *config.ServerConfig
 	PrometheusMetric *PrometheusMetric
-	Processes        []Process // todo: bad naming.
-	Client           *Client
+	Fetcher          *Fetcher
+	AgentPort        uint32
+	processes        []KimoProcess
+	mu               sync.RWMutex // proctects processes
 }
 
-// NewServer is used to create a new Server type
-func NewServer(cfg *config.Config) *Server {
+// SetProcesses sets kimo processes with lock
+func (s *Server) SetProcesses(kps []KimoProcess) {
+	s.mu.Lock()
+	s.processes = kps
+	s.mu.Unlock()
+}
+
+// GetProcesses gets kimo processes with lock
+func (s *Server) GetProcesses() []KimoProcess {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.processes
+}
+
+// ConvertProcesses convert raw processes to kimo processes
+func (s *Server) ConvertProcesses(rps []*RawProcess) []KimoProcess {
+	kps := make([]KimoProcess, 0)
+	for _, rp := range rps {
+		ut, err := strconv.ParseUint(rp.MysqlRow.Time, 10, 32)
+		if err != nil {
+			log.Errorf("time %s could not be converted to int", rp.MysqlRow.Time)
+		}
+		var kp KimoProcess
+
+		// set mysql properties
+		kp.ID = rp.MysqlRow.ID
+		kp.MysqlUser = rp.MysqlRow.User
+		kp.DB = rp.MysqlRow.DB.String
+		kp.Command = rp.MysqlRow.Command
+		kp.Time = uint32(ut)
+		kp.State = rp.MysqlRow.State.String
+		kp.Info = rp.MysqlRow.Info.String
+
+		// set agent process properties
+		kp.CmdLine = rp.AgentProcess.CmdLine()
+		kp.ConnectionStatus = rp.AgentProcess.ConnectionStatus()
+		kp.Pid = rp.AgentProcess.Pid()
+		kp.Host = rp.AgentProcess.Hostname()
+		kp.Detail = rp.Detail()
+
+		kps = append(kps, kp)
+	}
+	return kps
+}
+
+// NewServer creates an returns a new *Server
+func NewServer(cfg *config.ServerConfig) *Server {
 	log.Infoln("Creating a new server...")
-	s := new(Server)
-	s.Config = &cfg.Server
-	s.PrometheusMetric = NewPrometheusMetric(s)
-	s.Processes = make([]Process, 0)
-	s.Client = NewClient(*s.Config)
+	s := &Server{
+		Config:           cfg,
+		PrometheusMetric: NewPrometheusMetric(cfg.Metric.CmdlinePatterns),
+		processes:        make([]KimoProcess, 0),
+		AgentPort:        cfg.Agent.Port,
+	}
+	s.Fetcher = NewFetcher(*s.Config)
 	return s
 }
 
-// FetchAll fetches all processes through Client object
-func (s *Server) FetchAll() {
-	// todo: call with lock
-	// todo: prevent race condition
-	// todo: if a fetch is in progress and a new fetch is triggered, cancel the existing one.
+// Run starts the server and begins listening for HTTP requests.
+func (s *Server) Run() error {
+	log.Infof("Running server on %s \n", s.Config.ListenAddress)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ps, err := s.Client.FetchAll(ctx)
+	go s.pollAgents(ctx)
+
+	http.Handle("/", s.Static())
+	http.Handle("/metrics", s.Metrics())
+	http.HandleFunc("/procs", s.Procs)
+	http.HandleFunc("/health", s.Health)
+	err := http.ListenAndServe(s.Config.ListenAddress, nil)
 	if err != nil {
-		log.Error(err.Error())
-		return
+		log.Errorln(err.Error())
+		return err
 	}
-	s.Processes = ps
-	log.Debugf("%d processes are set\n", len(s.Processes))
-}
-
-func (s *Server) setMetrics() {
-	// todo: prevent race condition
-	s.PrometheusMetric.SetMetrics()
-}
-
-func (s *Server) pollAgents() {
-	ticker := time.NewTicker(s.Config.PollDuration * time.Second)
-
-	for {
-		s.FetchAll() // poll immediately at initialization
-		select {
-		// todo: add return case
-		case <-ticker.C:
-			s.FetchAll()
-		}
-	}
-
+	return nil
 }

@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <title>KIMO???</title>
-    <link href="https://unpkg.com/tabulator-tables@4.8.2/dist/css/tabulator.min.css" rel="stylesheet">
-    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.8.2/dist/js/tabulator.min.js"></script>
+    <link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator.min.css" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
   </head>
   <body>
     <script>
@@ -20,6 +20,9 @@
                         paginationSize: 50,
                         paginationSizeSelector: [50, 100, 250, 500],
                         footerElement: '<div>Filtered: <span id="filtered">..</span>/<span id="total">' + d.processes.length + '</span></div>',
+                        initialSort:[
+                            {column:"id", dir:"asc"},
+                        ],
                         dataFiltered: function(filters, rows){
                             var element = document.getElementById("filtered");
                             element.innerHTML = rows.length;
@@ -28,17 +31,37 @@
                             var element = document.getElementById("total");
                             element.innerHTML = data.length;
                         },
-                        columns: [
-                            { field: 'id', title: 'ID' , sorter: 'number', headerFilter: 'input', headerSortStartingDir: 'asc' },
-                            { field: 'mysql_user', title: 'User', sorter: 'string', headerFilter: 'input' },
-                            { field: 'db', title: 'DB', headerFilter: 'input' },
-                            { field: 'state', title: 'State', sorter: 'string', headerFilter:'input' },
-                            { field: 'command', title: 'Command', headerFilter:'input' },
-                            { field: 'time', title: 'Time', sorter: 'number', headerFilter:'input' },
-                            { field: 'pid', title: 'Pid', sorter: 'string', headerFilter:'input' },
-                            { field: 'info', title: 'Info', sorter: 'string', headerFilter:'input' },
-                            { field: 'host', title: 'Host', sorter: 'string', headerFilter:'input' },
-                            { field: 'cmdline', title: 'CMD', mutator: cmdline => cmdline?.join(' '), headerFilter:'input'},
+                        columns:[
+                            {
+                                title: "MySQL",
+                                headerHozAlign: "center",
+                                columns:[
+                                    { field: 'id', title: 'ID' , sorter: 'number', headerFilter: 'input', headerSortStartingDir: 'asc' },
+                                    { field: 'mysql_user', title: 'User', sorter: 'string', headerFilter: 'input' },
+                                    { field: 'db', title: 'DB', headerFilter: 'input' },
+                                    { field: 'state', title: 'State', sorter: 'string', headerFilter:'input' },
+                                    { field: 'command', title: 'Command', headerFilter:'input' },
+                                    { field: 'time', title: 'Time', sorter: 'number', headerFilter:'input' },
+                                    { field: 'info', title: 'Info', sorter: 'string', headerFilter:'input' }
+                                ]
+                            },
+                            {
+                                title: "Kimo Agent",
+                                headerHozAlign: "center",
+                                columns:[
+                                    { field: 'host', title: 'Host', sorter: 'string', headerFilter:'input' },
+                                    { field: 'pid', title: 'Pid', sorter: 'string', headerFilter:'input' },
+                                    { field: 'cmdline', title: 'CMD', sorter: 'string', headerFilter:'input'},
+                                    { field: 'status', title: 'Connection Status', sorter: 'string', headerFilter:'input'},
+                                ]
+                            },
+                            {
+                                title: "Info",
+                                headerHozAlign: "center",
+                                columns:[
+                                    { field: 'detail', title: 'Detail', sorter: 'string', headerFilter:'input' }
+                                ]
+                            }
                         ]
                     });
                 })
