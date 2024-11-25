@@ -83,7 +83,6 @@ func (s *Server) ConvertProcesses(rps []*RawProcess) []KimoProcess {
 
 // NewServer creates an returns a new *Server
 func NewServer(cfg *config.ServerConfig) *Server {
-	log.Infoln("Creating a new server...")
 	s := &Server{
 		Config:           cfg,
 		PrometheusMetric: NewPrometheusMetric(cfg.Metric.CmdlinePatterns),

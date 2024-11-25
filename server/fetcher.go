@@ -120,7 +120,7 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 
 // addProxyConns adds TCPProxy connection info if TCPProxy is enabled.
 func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
-	log.Infoln("Adding tcpproxy conns...")
+	log.Debugln("Adding tcpproxy conns...")
 	for _, rp := range rps {
 		conn := findTCPProxyConn(rp.AgentAddress(), conns)
 		if conn != nil {
@@ -131,7 +131,7 @@ func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
 
 // createRawProcesses creates raw process and inserts given param.
 func createRawProcesses(rows []*MysqlRow) []*RawProcess {
-	log.Infoln("Combining mysql and tcpproxy results...")
+	log.Debugln("Creating raw processes...")
 	var rps []*RawProcess
 	for _, row := range rows {
 		rp := &RawProcess{MysqlRow: row}
@@ -142,14 +142,14 @@ func createRawProcesses(rows []*MysqlRow) []*RawProcess {
 
 // FetchAll fetches and creates processes from resources to agents
 func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
-	log.Infoln("Fetching resources...")
+	log.Debugln("Fetching resources...")
 
-	log.Infoln("Fetching mysql rows...")
+	log.Debugln("Fetching mysql rows...")
 	rows, err := f.fetchMysql(ctx)
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("Got %d mysql rows \n", len(rows))
+	log.Debugln("Got %d mysql rows \n", len(rows))
 
 	rps := createRawProcesses(rows)
 
@@ -158,16 +158,16 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 			rp.TCPProxyEnabled = true
 		}
 
-		log.Infoln("Fetching tcpproxy conns...")
+		log.Debugln("Fetching tcpproxy conns...")
 		tps, err := f.fetchTcpProxy(ctx)
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("Got %d tcpproxy conns \n", len(tps))
+		log.Debugf("Got %d tcpproxy conns \n", len(tps))
 		addProxyConns(rps, tps)
 	}
 
-	log.Infof("Fetching %d agents...\n", len(rps))
+	log.Debugf("Fetching %d agents...\n", len(rps))
 	f.fetchAgents(ctx, rps)
 
 	log.Debugf("%d raw processes are generated \n", len(rps))
@@ -246,7 +246,7 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) {
 		log.Errorf("fetch agents operation timed out: %s", ctx.Err())
 		return
 	case <-done:
-		log.Infoln("All agents are visited.")
+		log.Debugln("All agents are visited.")
 		return
 	}
 }

@@ -53,6 +53,7 @@ func getHostname() string {
 
 // Run starts the http server and begins listening for HTTP requests.
 func (a *Agent) Run() error {
+	log.Infof("Running server on %s \n", a.Config.ListenAddress)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
