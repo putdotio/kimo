@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// PrometheusMetric is the type that contains all metrics those will be exposed.
+// PrometheusMetric represents the type that contains all metrics those will be exposed.
 type PrometheusMetric struct {
 	conns prometheus.Gauge
 	conn  *prometheus.GaugeVec
@@ -18,7 +18,7 @@ type PrometheusMetric struct {
 	commandLineRegexps []*regexp.Regexp
 }
 
-// NewPrometheusMetric is the constructor function of PrometheusMetric
+// NewPrometheusMetric creates and returns a new PrometheusMetric.
 func NewPrometheusMetric(commandLinePatterns []string) *PrometheusMetric {
 	return &PrometheusMetric{
 		commandLineRegexps: convertPatternsToRegexps(commandLinePatterns),
@@ -41,6 +41,7 @@ func NewPrometheusMetric(commandLinePatterns []string) *PrometheusMetric {
 	}
 }
 
+// convertPatternsToRegexps converts given patterns into regexps.
 func convertPatternsToRegexps(patterns []string) []*regexp.Regexp {
 	rps := make([]*regexp.Regexp, 0)
 	for _, pattern := range patterns {

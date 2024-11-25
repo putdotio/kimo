@@ -9,17 +9,19 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// AgentClient is agent client to fetch agent process from a kimo agent
+// AgentClient represents an agent client to fetch get process from a kimo-agent
 type AgentClient struct {
 	Host string
 	Port uint32
 }
 
+// AgentError represents an HTTP error that is retured from kimo-agent.
 type AgentError struct {
 	Hostname string
 	Status   string
 }
 
+// AgentResponse represents a success response from kimo-agent.
 type AgentResponse struct {
 	Pid              int
 	Name             string
@@ -32,7 +34,7 @@ func (ae *AgentError) Error() string {
 	return fmt.Sprintf("Agent error. Host: %s - status: %s\n", ae.Hostname, ae.Status)
 }
 
-// NewAgentClient is constructor function for creating Agent object
+// NewAgentClient creates and returns a new AgentClient.
 func NewAgentClient(address IPPort) *AgentClient {
 	ac := new(AgentClient)
 	ac.Host = address.IP
@@ -40,7 +42,7 @@ func NewAgentClient(address IPPort) *AgentClient {
 	return ac
 }
 
-// Fetch is used to fetch agent process
+// Get gets process info from kimo agent.
 func (ac *AgentClient) Get(ctx context.Context, port uint32) (*AgentResponse, error) {
 	url := fmt.Sprintf("http://%s:%d/proc?port=%d", ac.Host, ac.Port, port)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

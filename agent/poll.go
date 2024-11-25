@@ -9,6 +9,7 @@ import (
 	gopsutilNet "github.com/shirou/gopsutil/v4/net"
 )
 
+// pollConns periodically checks for connections.
 func (a *Agent) pollConns(ctx context.Context) {
 	log.Infoln("Polling started...")
 	ticker := time.NewTicker(a.Config.PollInterval)
@@ -29,6 +30,9 @@ func (a *Agent) pollConns(ctx context.Context) {
 		}
 	}
 }
+
+// doPoll retrieves the current network connections and updates the Agent's connection state.
+// It returns an error if fetching connections fails.
 func (a *Agent) doPoll(ctx context.Context) error {
 	conns, err := getConns(ctx)
 	if err != nil {
@@ -37,10 +41,13 @@ func (a *Agent) doPoll(ctx context.Context) error {
 
 	a.SetConns(conns)
 
-	log.Infof("Updated connections: count=%d", len(conns))
+	log.Infof("Updated connections: %d", len(conns))
 	return nil
 }
 
+// getConns retrieves a list of TCP connections with a 5-second timeout.
+// It runs the potentially expensive connection checking operation in a separate goroutine
+// to ensure it doesn't block indefinitely.
 func getConns(ctx context.Context) ([]gopsutilNet.ConnectionStat, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
@@ -52,8 +59,7 @@ func getConns(ctx context.Context) ([]gopsutilNet.ConnectionStat, error) {
 
 	resultChan := make(chan result, 1)
 	go func() {
-		// This is an expensive operation.
-		// So, we need to call it infrequent to prevent high load on servers those run kimo agents.
+		// Expensive operation - should be called sparingly to avoid high server load
 		conns, err := gopsutilNet.ConnectionsWithContext(ctx, "tcp")
 		resultChan <- result{conns, err}
 

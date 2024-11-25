@@ -11,7 +11,7 @@ import (
 	_ "github.com/go-sql-driver/mysql" // imports mysql driver
 )
 
-// MysqlRow is a row from processlist table
+// MysqlRow represents a row from processlist table
 type MysqlRow struct {
 	ID      int32          `json:"id"`
 	User    string         `json:"user"`
@@ -23,20 +23,20 @@ type MysqlRow struct {
 	Address IPPort         `json:"address"`
 }
 
-// NewMysqlClient is used to create a Mysql type.
+// NewMysqlClient creates and returns a new *MysqlClient.
 func NewMysqlClient(cfg config.MySQLConfig) *MysqlClient {
 	m := new(MysqlClient)
 	m.DSN = cfg.DSN
 	return m
 }
 
-// MysqlClient is used to get processes from mysql.
+// MysqlClient represents a MySQL database client that manages connection details and stores query results.
 type MysqlClient struct {
 	DSN       string
 	MysqlRows []MysqlRow
 }
 
-// Get is used to fetch processlist table from information_schema.
+// Get gets  processlist table from information_schema.
 func (mc *MysqlClient) Get(ctx context.Context) ([]*MysqlRow, error) {
 	db, err := sql.Open("mysql", mc.DSN)
 

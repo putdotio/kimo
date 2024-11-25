@@ -12,7 +12,7 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// TCPProxyResult is type for defining a connection through TCP Proxy to MySQL
+// TCPProxyResult represents connection through TCPProxy to MySQL
 type TCPProxyConn struct {
 	ClientOut IPPort `json:"client_out"`
 	ProxyIn   IPPort `json:"proxy_in"`
@@ -20,24 +20,24 @@ type TCPProxyConn struct {
 	ServerIn  IPPort `json:"server_in"`
 }
 
-// TCPConnResponse is a type for TCP Proxy management api response
+// TCPConnResponse represents TCPProxy management API response
 type TCPConnResponse struct {
 	Records []*TCPProxyConn `json:"conns"`
 }
 
-// TCPProxyClient is used for getting info from tcp proxy
+// TCPProxyClient represents a TCPProxy client that manages connection details and stores TCPProxy management results.
 type TCPProxyClient struct {
 	MgmtAddress string
 }
 
-// NewTCPProxy is used to create a new TCPProxy
+// NewServer creates an returns a new *TCPProxyClient
 func NewTCPProxyClient(cfg config.TCPProxy) *TCPProxyClient {
 	tc := new(TCPProxyClient)
 	tc.MgmtAddress = cfg.MgmtAddress
 	return tc
 }
 
-// Get is used to fetch connection records from tcp proxy.
+// Get gets connection records from TCPProxy.
 func (tc *TCPProxyClient) Get(ctx context.Context) ([]*TCPProxyConn, error) {
 	url := fmt.Sprintf("http://%s/conns?json=true", tc.MgmtAddress)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

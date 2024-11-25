@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,7 +12,7 @@ import (
 	_ "kimo/statik" // Auto-generated module by statik.
 )
 
-// Response is type for returning a response from kimo server
+// Response contains basic process information for API responses.
 type Response struct {
 	Processes []KimoProcess `json:"processes"`
 }
@@ -52,25 +51,4 @@ func (s *Server) Static() http.Handler {
 // Metrics is used to expose metrics that is compatible with Prometheus exporter
 func (s *Server) Metrics() http.Handler {
 	return promhttp.Handler()
-}
-
-// Run is used to run http handlers
-func (s *Server) Run() error {
-	log.Infof("Running server on %s \n", s.Config.ListenAddress)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go s.pollAgents(ctx)
-
-	http.Handle("/", s.Static())
-	http.Handle("/metrics", s.Metrics())
-	http.HandleFunc("/procs", s.Procs)
-	http.HandleFunc("/health", s.Health)
-	err := http.ListenAndServe(s.Config.ListenAddress, nil)
-	if err != nil {
-		log.Errorln(err.Error())
-		return err
-	}
-	return nil
 }

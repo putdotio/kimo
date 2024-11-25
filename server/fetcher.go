@@ -11,7 +11,7 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// Fetcher fetches process info from mysql to kimo agent
+// Fetcher fetches process info(s) from resources
 type Fetcher struct {
 	MysqlClient    *MysqlClient
 	TCPProxyClient *TCPProxyClient
@@ -19,7 +19,7 @@ type Fetcher struct {
 	AgentPort uint32
 }
 
-// RawProcess combines mysql row, tcp proxy conn and agent process
+// RawProcess combines resources information(mysql row, tcp proxy conn, agent process etc.)
 type RawProcess struct {
 	MysqlRow     *MysqlRow
 	TCPProxyConn *TCPProxyConn
@@ -28,6 +28,7 @@ type RawProcess struct {
 	TCPProxyEnabled bool
 }
 
+// AgentAddress returns agent address considering proxy usage.
 func (rp *RawProcess) AgentAddress() IPPort {
 	if rp.TCPProxyConn != nil {
 		return IPPort{IP: rp.TCPProxyConn.ClientOut.IP, Port: rp.TCPProxyConn.ClientOut.Port}
@@ -35,12 +36,14 @@ func (rp *RawProcess) AgentAddress() IPPort {
 	return IPPort{IP: rp.MysqlRow.Address.IP, Port: rp.MysqlRow.Address.Port}
 }
 
+// AgentProcess represents process info from a kimo-agent.
 type AgentProcess struct {
 	Address  IPPort
 	Response *AgentResponse
 	err      error
 }
 
+// Hostname is kimo agent's hostname.
 func (ap *AgentProcess) Hostname() string {
 	if ap.Response != nil {
 		return ap.Response.Hostname
@@ -57,6 +60,7 @@ func (ap *AgentProcess) Hostname() string {
 	return ""
 }
 
+// Pid returns process pid info from kimo agent
 func (ap *AgentProcess) Pid() int {
 	if ap.Response != nil {
 		return ap.Response.Pid
@@ -64,6 +68,7 @@ func (ap *AgentProcess) Pid() int {
 	return 0
 }
 
+// CmdLine returns process cmdline info from kimo agent
 func (ap *AgentProcess) CmdLine() string {
 	if ap.Response != nil {
 		return ap.Response.CmdLine
@@ -71,6 +76,7 @@ func (ap *AgentProcess) CmdLine() string {
 	return ""
 }
 
+// ConnectionStatus returns process connections status info from kimo agent
 func (ap *AgentProcess) ConnectionStatus() string {
 	if ap.Response != nil {
 		return strings.ToLower(ap.Response.ConnectionStatus)
@@ -78,6 +84,7 @@ func (ap *AgentProcess) ConnectionStatus() string {
 	return ""
 }
 
+// Detail returns error detail of the process.
 func (rp *RawProcess) Detail() string {
 	if rp.TCPProxyEnabled && rp.TCPProxyConn == nil {
 		return "No connection found on tcpproxy"
@@ -91,7 +98,7 @@ func (rp *RawProcess) Detail() string {
 	return ""
 }
 
-// NewFetcher is constructor fuction for creating a new Fetcher object
+// NewFetcher creates and returns a new Fetcher.
 func NewFetcher(cfg config.ServerConfig) *Fetcher {
 	f := new(Fetcher)
 	f.MysqlClient = NewMysqlClient(cfg.MySQL)
@@ -102,6 +109,7 @@ func NewFetcher(cfg config.ServerConfig) *Fetcher {
 	return f
 }
 
+// getAgentProcess gets process info from a single kimo-agent.
 func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *RawProcess) {
 	defer wg.Done()
 
@@ -110,6 +118,7 @@ func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *R
 	rp.AgentProcess = &AgentProcess{Response: ar, err: err}
 }
 
+// addProxyConns adds TCPProxy connection info if TCPProxy is enabled.
 func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
 	log.Infoln("Adding tcpproxy conns...")
 	for _, rp := range rps {
@@ -120,6 +129,7 @@ func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
 	}
 }
 
+// createRawProcesses creates raw process and inserts given param.
 func createRawProcesses(rows []*MysqlRow) []*RawProcess {
 	log.Infoln("Combining mysql and tcpproxy results...")
 	var rps []*RawProcess
@@ -130,7 +140,7 @@ func createRawProcesses(rows []*MysqlRow) []*RawProcess {
 	return rps
 }
 
-// FetchAll is used to create processes from mysql to agents
+// FetchAll fetches and creates processes from resources to agents
 func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	log.Infoln("Fetching resources...")
 
@@ -164,6 +174,8 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	return rps, nil
 }
 
+// fetchMysql retrieves MySQL data with timeout.
+// It performs the fetch operation in a separate goroutine to prevent blocking.
 func (f *Fetcher) fetchMysql(ctx context.Context) ([]*MysqlRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
@@ -187,6 +199,8 @@ func (f *Fetcher) fetchMysql(ctx context.Context) ([]*MysqlRow, error) {
 	}
 }
 
+// fetchTcpProxy retrieves TCP proxy connections with timeout.
+// It performs the fetch operation in a separate goroutine to prevent blocking.
 func (f *Fetcher) fetchTcpProxy(ctx context.Context) ([]*TCPProxyConn, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
@@ -210,6 +224,7 @@ func (f *Fetcher) fetchTcpProxy(ctx context.Context) ([]*TCPProxyConn, error) {
 	}
 }
 
+// fetchAgents concurrently retrieves process information from multiple agents with timeout.
 func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()

@@ -3,12 +3,13 @@ package server
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/cenkalti/log"
 )
 
+// pollAgents continuously polls for agent information at configured intervals.
+// It performs an initial poll immediately, then polls based on PollInterval from config.
 func (s *Server) pollAgents(ctx context.Context) {
 	log.Infoln("Polling started...")
 	ticker := time.NewTicker(s.Config.PollInterval)
@@ -30,6 +31,7 @@ func (s *Server) pollAgents(ctx context.Context) {
 	}
 }
 
+// doPoll performs a single polling operation to fetch and update process information.
 func (s *Server) doPoll(ctx context.Context) error {
 	type result struct {
 		rps []*RawProcess
@@ -55,40 +57,11 @@ func (s *Server) doPoll(ctx context.Context) error {
 		if r.err != nil {
 			return r.err
 		}
-		s.SetProcesses(createKimoProcesses(r.rps))
+		kps := s.ConvertProcesses(r.rps)
+		s.SetProcesses(kps)
 		s.PrometheusMetric.Set(s.GetProcesses())
 		log.Debugf("%d processes are set\n", len(s.GetProcesses()))
 		return nil
 	}
 
-}
-
-func createKimoProcesses(rps []*RawProcess) []KimoProcess {
-	kps := make([]KimoProcess, 0)
-	for _, rp := range rps {
-		ut, err := strconv.ParseUint(rp.MysqlRow.Time, 10, 32)
-		if err != nil {
-			log.Errorf("time %s could not be converted to int", rp.MysqlRow.Time)
-		}
-		var kp KimoProcess
-
-		// set mysql properties
-		kp.ID = rp.MysqlRow.ID
-		kp.MysqlUser = rp.MysqlRow.User
-		kp.DB = rp.MysqlRow.DB.String
-		kp.Command = rp.MysqlRow.Command
-		kp.Time = uint32(ut)
-		kp.State = rp.MysqlRow.State.String
-		kp.Info = rp.MysqlRow.Info.String
-
-		// set agent process properties
-		kp.CmdLine = rp.AgentProcess.CmdLine()
-		kp.ConnectionStatus = rp.AgentProcess.ConnectionStatus()
-		kp.Pid = rp.AgentProcess.Pid()
-		kp.Host = rp.AgentProcess.Hostname()
-		kp.Detail = rp.Detail()
-
-		kps = append(kps, kp)
-	}
-	return kps
 }

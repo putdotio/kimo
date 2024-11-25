@@ -51,14 +51,14 @@ type Metric struct {
 	CmdlinePatterns []string `yaml:"cmdline_patterns"`
 }
 
-// NewConfig is constructor function for Config type
+// NewConfig creates and returns a new Config.
 func NewConfig() *Config {
 	c := new(Config)
 	*c = defaultConfig
 	return c
 }
 
-// ReadFile parses a yaml config file and loads it into Config object
+// LoadFile parses a yaml config file and loads it into Config object
 func (c *Config) LoadConfig(name string) error {
 	content, err := os.ReadFile(name)
 	if err != nil {

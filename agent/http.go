@@ -34,6 +34,7 @@ func (a *Agent) GetConns() []gopsutilNet.ConnectionStat {
 	return a.conns
 }
 
+// Response contains basic process information for API responses.
 type Response struct {
 	Status  string `json:"status"`
 	Pid     int32  `json:"pid"`
@@ -41,7 +42,7 @@ type Response struct {
 	CmdLine string `json:"cmdline"`
 }
 
-// NewAgent is constuctor function for Agent type
+// NewAgent creates an returns a new Agent
 func NewAgent(cfg *config.AgentConfig) *Agent {
 	d := new(Agent)
 	d.Config = cfg

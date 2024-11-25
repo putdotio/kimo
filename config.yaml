@@ -15,6 +15,6 @@ server:
     tcpproxy:
         mgmt_address: "kimo-tcpproxy:3307"
     metric:
-        # If one of these pattern match whole cmdline will be exposed as , otherwise it will be truncated.
+        # If one of these patterns match, whole cmdline will be exposed as it is, otherwise it will be truncated.
         cmdline_patterns:
             - "mysql*"
