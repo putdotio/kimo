@@ -23,12 +23,12 @@ func NewPrometheusMetric(commandLinePatterns []string) *PrometheusMetric {
 	return &PrometheusMetric{
 		commandLineRegexps: convertPatternsToRegexps(commandLinePatterns),
 		conns: promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "kimo_conns_total",
+			Name: "kimo_mysql_conns_total",
 			Help: "Total number of db processes (conns)",
 		}),
 		conn: promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "kimo_connection",
-			Help: "Kimo connection with labels",
+			Name: "kimo_mysql_connection",
+			Help: "Kimo mysql connection.",
 		},
 			[]string{
 				"db",
