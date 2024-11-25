@@ -80,7 +80,7 @@ func createKimoProcesses(rps []*RawProcess) []KimoProcess {
 			State:     rp.MysqlRow.State.String,
 			Info:      rp.MysqlRow.Info.String,
 		}
-		if rp.AgentProcess != nil && rp.AgentProcess.Response != nil {
+		if rp.AgentProcessFound() {
 			kp.CmdLine = rp.AgentProcess.Response.CmdLine
 			kp.ConnectionStatus = strings.ToLower(rp.AgentProcess.Response.ConnectionStatus)
 			kp.Pid = int32(rp.AgentProcess.Response.Pid)

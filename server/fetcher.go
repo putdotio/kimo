@@ -24,13 +24,17 @@ type RawProcess struct {
 	TCPProxyConn *TCPProxyConn
 	AgentProcess *AgentProcess
 
-	TCPProxyExist bool
+	TCPProxyEnabled bool
 }
 
 type AgentProcess struct {
 	Address  IPPort
 	Response *AgentResponse
 	err      error
+}
+
+func (rp *RawProcess) AgentProcessFound() bool {
+	return rp.AgentProcess != nil && rp.AgentProcess.Response != nil
 }
 
 func (rp *RawProcess) AgentAddress() IPPort {
@@ -57,7 +61,7 @@ func (ap *AgentProcess) Hostname() string {
 }
 
 func (rp *RawProcess) Detail() string {
-	if rp.TCPProxyExist && rp.TCPProxyConn == nil {
+	if rp.TCPProxyEnabled && rp.TCPProxyConn == nil {
 		return "No connection found on tcpproxy"
 	}
 
@@ -123,7 +127,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 
 	if f.TCPProxyClient != nil {
 		for _, rp := range rps {
-			rp.TCPProxyExist = true
+			rp.TCPProxyEnabled = true
 		}
 
 		log.Infoln("Fetching tcpproxy conns...")
