@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kimo/config"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,21 +28,17 @@ type RawProcess struct {
 	TCPProxyEnabled bool
 }
 
-type AgentProcess struct {
-	Address  IPPort
-	Response *AgentResponse
-	err      error
-}
-
-func (rp *RawProcess) AgentProcessFound() bool {
-	return rp.AgentProcess != nil && rp.AgentProcess.Response != nil
-}
-
 func (rp *RawProcess) AgentAddress() IPPort {
 	if rp.TCPProxyConn != nil {
 		return IPPort{IP: rp.TCPProxyConn.ClientOut.IP, Port: rp.TCPProxyConn.ClientOut.Port}
 	}
 	return IPPort{IP: rp.MysqlRow.Address.IP, Port: rp.MysqlRow.Address.Port}
+}
+
+type AgentProcess struct {
+	Address  IPPort
+	Response *AgentResponse
+	err      error
 }
 
 func (ap *AgentProcess) Hostname() string {
@@ -57,7 +54,28 @@ func (ap *AgentProcess) Hostname() string {
 		}
 	}
 
-	return "ERROR" // todo: find a better name.
+	return ""
+}
+
+func (ap *AgentProcess) Pid() int {
+	if ap.Response != nil {
+		return ap.Response.Pid
+	}
+	return 0
+}
+
+func (ap *AgentProcess) CmdLine() string {
+	if ap.Response != nil {
+		return ap.Response.CmdLine
+	}
+	return ""
+}
+
+func (ap *AgentProcess) ConnectionStatus() string {
+	if ap.Response != nil {
+		return strings.ToLower(ap.Response.ConnectionStatus)
+	}
+	return ""
 }
 
 func (rp *RawProcess) Detail() string {

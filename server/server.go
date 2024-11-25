@@ -18,7 +18,7 @@ type KimoProcess struct {
 	Info             string `json:"info"`
 	CmdLine          string `json:"cmdline"`
 	ConnectionStatus string `json:"status"`
-	Pid              int32  `json:"pid,omitempty"`
+	Pid              int  `json:"pid,omitempty"`
 	Host             string `json:"host"`
 	Detail           string `json:"detail"`
 }

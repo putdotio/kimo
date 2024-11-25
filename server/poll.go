@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cenkalti/log"
@@ -71,23 +70,24 @@ func createKimoProcesses(rps []*RawProcess) []KimoProcess {
 		if err != nil {
 			log.Errorf("time %s could not be converted to int", rp.MysqlRow.Time)
 		}
-		kp := KimoProcess{
-			ID:        rp.MysqlRow.ID,
-			MysqlUser: rp.MysqlRow.User,
-			DB:        rp.MysqlRow.DB.String,
-			Command:   rp.MysqlRow.Command,
-			Time:      uint32(ut),
-			State:     rp.MysqlRow.State.String,
-			Info:      rp.MysqlRow.Info.String,
-		}
-		if rp.AgentProcessFound() {
-			kp.CmdLine = rp.AgentProcess.Response.CmdLine
-			kp.ConnectionStatus = strings.ToLower(rp.AgentProcess.Response.ConnectionStatus)
-			kp.Pid = int32(rp.AgentProcess.Response.Pid)
-			kp.Host = rp.AgentProcess.Response.Hostname
-		} else {
-			kp.Detail = rp.Detail()
-		}
+		var kp KimoProcess
+
+		// set mysql properties
+		kp.ID = rp.MysqlRow.ID
+		kp.MysqlUser = rp.MysqlRow.User
+		kp.DB = rp.MysqlRow.DB.String
+		kp.Command = rp.MysqlRow.Command
+		kp.Time = uint32(ut)
+		kp.State = rp.MysqlRow.State.String
+		kp.Info = rp.MysqlRow.Info.String
+
+		// set agent process properties
+		kp.CmdLine = rp.AgentProcess.CmdLine()
+		kp.ConnectionStatus = rp.AgentProcess.ConnectionStatus()
+		kp.Pid = rp.AgentProcess.Pid()
+		kp.Host = rp.AgentProcess.Hostname()
+		kp.Detail = rp.Detail()
+
 		kps = append(kps, kp)
 	}
 	return kps

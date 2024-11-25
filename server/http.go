@@ -36,7 +36,6 @@ func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
 
 // Health is a dummy endpoint for load balancer health check
 func (s *Server) Health(w http.ResponseWriter, req *http.Request) {
-	// todo: real health check
 	fmt.Fprintf(w, "OK")
 }
 
