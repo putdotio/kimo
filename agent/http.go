@@ -18,6 +18,13 @@ type Response struct {
 	CmdLine string `json:"cmdline"`
 }
 
+// NetworkProcess represents process with its network connection.
+type NetworkProcess struct {
+	process *gopsutilProcess.Process
+	conn    gopsutilNet.ConnectionStat
+}
+
+// parsePortParam parses and returns port number from the request.
 func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	portParam, ok := req.URL.Query()["port"]
 	log.Debugf("Looking for process of port: %s\n", portParam)
@@ -33,12 +40,6 @@ func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 		return 0, err
 	}
 	return uint32(p), nil
-}
-
-// NetworkProcess represents process with its network connection.
-type NetworkProcess struct {
-	process *gopsutilProcess.Process
-	conn    gopsutilNet.ConnectionStat
 }
 
 // findProcess finds process from connections by given port.
