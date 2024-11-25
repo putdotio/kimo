@@ -1,38 +1,14 @@
 package agent
 
 import (
-	"context"
 	"encoding/json"
-	"kimo/config"
 	"net/http"
-	"os"
 	"strconv"
-	"sync"
 
 	"github.com/cenkalti/log"
 	gopsutilNet "github.com/shirou/gopsutil/v4/net"
 	gopsutilProcess "github.com/shirou/gopsutil/v4/process"
 )
-
-// Agent is type for handling agent operations
-type Agent struct {
-	Config   *config.AgentConfig
-	conns    []gopsutilNet.ConnectionStat
-	Hostname string
-	mu       sync.RWMutex // protects conns
-}
-
-func (a *Agent) SetConns(conns []gopsutilNet.ConnectionStat) {
-	a.mu.Lock()
-	a.conns = conns
-	a.mu.Unlock()
-}
-
-func (a *Agent) GetConns() []gopsutilNet.ConnectionStat {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	return a.conns
-}
 
 // Response contains basic process information for API responses.
 type Response struct {
@@ -40,23 +16,6 @@ type Response struct {
 	Pid     int32  `json:"pid"`
 	Name    string `json:"name"`
 	CmdLine string `json:"cmdline"`
-}
-
-// NewAgent creates an returns a new Agent
-func NewAgent(cfg *config.AgentConfig) *Agent {
-	d := new(Agent)
-	d.Config = cfg
-	d.Hostname = getHostname()
-	return d
-}
-
-func getHostname() string {
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Errorf("Hostname could not found")
-		hostname = "UNKNOWN"
-	}
-	return hostname
 }
 
 func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
@@ -76,13 +35,15 @@ func parsePortParam(w http.ResponseWriter, req *http.Request) (uint32, error) {
 	return uint32(p), nil
 }
 
+// NetworkProcess represents process with its network connection.
 type NetworkProcess struct {
 	process *gopsutilProcess.Process
 	conn    gopsutilNet.ConnectionStat
 }
 
-func (a *Agent) findProcess(port uint32) *NetworkProcess {
-	for _, conn := range a.GetConns() {
+// findProcess finds process from connections by given port.
+func findProcess(port uint32, conns []gopsutilNet.ConnectionStat) *NetworkProcess {
+	for _, conn := range conns {
 		if conn.Laddr.Port != port {
 			continue
 		}
@@ -106,6 +67,7 @@ func (a *Agent) findProcess(port uint32) *NetworkProcess {
 	return nil
 }
 
+// createResponse creates Response from given NetworkProcess parameter.
 func createResponse(np *NetworkProcess) *Response {
 	if np == nil {
 		return nil
@@ -136,7 +98,7 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "port param is required", http.StatusBadRequest)
 		return
 	}
-	p := a.findProcess(port)
+	p := findProcess(port, a.GetConns())
 	if p == nil {
 		http.Error(w, "Connection not found", http.StatusNotFound)
 		return
@@ -148,20 +110,4 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(w, "Can not encode agent process", http.StatusInternalServerError)
 	}
-}
-
-// Run is main function to run http server
-func (a *Agent) Run() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go a.pollConns(ctx)
-
-	http.HandleFunc("/proc", a.Process)
-	err := http.ListenAndServe(a.Config.ListenAddress, nil)
-	if err != nil {
-		log.Errorln(err.Error())
-		return err
-	}
-	return nil
 }

@@ -62,7 +62,6 @@ func getConns(ctx context.Context) ([]gopsutilNet.ConnectionStat, error) {
 		// Expensive operation - should be called sparingly to avoid high server load
 		conns, err := gopsutilNet.ConnectionsWithContext(ctx, "tcp")
 		resultChan <- result{conns, err}
-
 	}()
 
 	select {
