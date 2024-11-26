@@ -14,7 +14,7 @@ import (
 // Agent is type for handling agent operations
 type Agent struct {
 	Config   *config.AgentConfig
-	conns    []gopsutilNet.ConnectionStat
+	conns    []gopsutilNet.ConnectionStat //todo: store only what we need.
 	Hostname string
 	mu       sync.RWMutex // protects conns
 }

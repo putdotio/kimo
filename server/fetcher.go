@@ -35,6 +35,14 @@ func (rp *RawProcess) AgentAddress() IPPort {
 	return IPPort{IP: rp.MysqlRow.Address.IP, Port: rp.MysqlRow.Address.Port}
 }
 
+// AgentHost returns agent's host
+func (rp *RawProcess) AgentHost() string {
+	if rp.AgentProcess != nil {
+		return rp.AgentProcess.Host()
+	}
+	return rp.AgentAddress().IP
+}
+
 // Detail returns error detail of the process.
 func (rp *RawProcess) Detail() string {
 	if rp.TCPProxyEnabled && rp.TCPProxyConn == nil {
@@ -183,30 +191,36 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 	defer cancel()
 
 	type result struct {
-		response *AgentResponse
+		response []*AgentResponse
 		err      error
-		address  IPPort
+		IP       string // todo: fix ambiguity.
 	}
 
-	resultChan := make(chan *result, len(rps))
-	done := make(chan struct{}, 1)
+	agentIPPorts := make(map[string][]uint32)
+	for _, rp := range rps {
+		ports := agentIPPorts[rp.AgentAddress().IP]
+		ports = append(ports, rp.AgentAddress().Port)
+		agentIPPorts[rp.AgentAddress().IP] = ports
+	}
 
-	// todo: group agent requests.
+	done := make(chan struct{}, 1)
+	resultChan := make(chan *result, len(agentIPPorts))
 
 	// Get results from agents
 	go func() {
 		// todo: limit concurrent goroutines.
 		var wg sync.WaitGroup
-		for _, rp := range rps {
+		for agentIP, ports := range agentIPPorts {
 			wg.Add(1)
-			go func(address IPPort, agentPort uint32) {
+
+			agentAddr := IPPort{IP: agentIP, Port: f.AgentPort}
+			go func(address IPPort, ports []uint32) {
 				defer wg.Done()
 
-				agentAddr := IPPort{IP: address.IP, Port: agentPort}
-				ac := NewAgentClient(agentAddr)
-				ar, err := ac.Get(ctx, address.Port)
-				resultChan <- &result{response: ar, err: err, address: address}
-			}(rp.AgentAddress(), f.AgentPort)
+				ac := NewAgentClient(address)
+				ar, err := ac.Get(ctx, ports)
+				resultChan <- &result{response: ar, err: err, IP: address.IP}
+			}(agentAddr, ports)
 		}
 		wg.Wait()
 		close(resultChan) // Close channel to signal no more results
@@ -221,8 +235,11 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 	go func() {
 		for result := range resultChan {
 			if result != nil {
-				ap := NewAgentProcesss(result.response, result.address, result.err)
-				aps = append(aps, ap)
+				for _, resp := range result.response {
+					addr := IPPort{IP: result.IP, Port: resp.Port}
+					ap := NewAgentProcesss(resp, addr, result.err)
+					aps = append(aps, ap)
+				}
 			}
 		}
 		close(apsDone) // close channel to signal result collection is done.
@@ -236,7 +253,7 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 	case <-done:
 		// Wait for all results to be collected
 		<-apsDone
-		log.Debugln("All agents are visited.")
+		log.Debugf("All agents are visited. %d processes found \n", len(aps))
 		return aps
 	}
 }

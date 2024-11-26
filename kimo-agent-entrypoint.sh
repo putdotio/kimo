@@ -19,8 +19,10 @@ if [ "$i" = 0 ]; then
         exit 1
 fi
 
-echo "mysql sleep query..."
-mysql -u"$user" -p"$password" -h"$host" -e "SELECT SLEEP(100000)" &
+echo "mysql sleep queries..."
+mysql -u"$user" -p"$password" -h"$host" -e "SELECT SLEEP(5000)" &
+mysql -u"$user" -p"$password" -h"$host" -e "SELECT SLEEP(6000)" &
+mysql -u"$user" -p"$password" -h"$host" -e "SELECT SLEEP(7000)" &
 
 echo "running kimo agent..."
 kimo --debug agent

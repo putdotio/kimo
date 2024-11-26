@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/cenkalti/log"
 )
 
 // AgentProcess represents process info from a kimo-agent enhanced with response detail.
 type AgentProcess struct {
-	Pid              int
+	Pid              uint32
 	Name             string
 	Cmdline          string
 	ConnectionStatus string
@@ -31,6 +32,7 @@ func NewAgentProcesss(ar *AgentResponse, address IPPort, err error) *AgentProces
 		ap.Name = ar.Name
 		ap.Cmdline = ar.CmdLine
 		ap.hostname = ar.Hostname
+		ap.ConnectionStatus = ar.Status
 	}
 	return ap
 }
@@ -50,8 +52,7 @@ func (ap *AgentProcess) Host() string {
 
 // AgentClient represents an agent client to fetch get process from a kimo-agent
 type AgentClient struct {
-	Host string
-	Port uint32
+	Address IPPort
 }
 
 // AgentError represents an HTTP error that is retured from kimo-agent.
@@ -62,11 +63,12 @@ type AgentError struct {
 
 // AgentResponse represents a success response from kimo-agent.
 type AgentResponse struct {
-	Pid              int
-	Name             string
-	CmdLine          string
-	Hostname         string
-	ConnectionStatus string
+	Hostname string
+	Status   string
+	Pid      uint32
+	Name     string
+	CmdLine  string
+	Port     uint32
 }
 
 func (ae *AgentError) Error() string {
@@ -75,15 +77,13 @@ func (ae *AgentError) Error() string {
 
 // NewAgentClient creates and returns a new AgentClient.
 func NewAgentClient(address IPPort) *AgentClient {
-	ac := new(AgentClient)
-	ac.Host = address.IP
-	ac.Port = address.Port
-	return ac
+	// kimo-agent listens this address
+	return &AgentClient{Address: address}
 }
 
 // Get gets process info from kimo agent.
-func (ac *AgentClient) Get(ctx context.Context, port uint32) (*AgentResponse, error) {
-	url := fmt.Sprintf("http://%s:%d/proc?port=%d", ac.Host, ac.Port, port)
+func (ac *AgentClient) Get(ctx context.Context, ports []uint32) ([]*AgentResponse, error) {
+	url := fmt.Sprintf("http://%s:%d/proc?ports=%s", ac.Address.IP, ac.Address.Port, createPortsParam(ports))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -101,13 +101,19 @@ func (ac *AgentClient) Get(ctx context.Context, port uint32) (*AgentResponse, er
 		return nil, &AgentError{Hostname: hostname, Status: response.Status}
 	}
 
-	type result struct {
+	type process struct {
 		Status  string `json:"status"`
-		Pid     int32  `json:"pid"`
+		Pid     uint32 `json:"pid"`
+		Port    uint32 `json:"port"`
 		Name    string `json:"name"`
 		CmdLine string `json:"cmdline"`
 	}
-	r := result{}
+
+	type Response struct {
+		Processes []*process `json:"processes"`
+	}
+
+	var r Response
 	err = json.NewDecoder(response.Body).Decode(&r)
 
 	if err != nil {
@@ -115,13 +121,28 @@ func (ac *AgentClient) Get(ctx context.Context, port uint32) (*AgentResponse, er
 		return nil, err
 	}
 
-	return &AgentResponse{
-			ConnectionStatus: r.Status,
-			Pid:              int(r.Pid),
-			Name:             r.Name,
-			CmdLine:          r.CmdLine,
-			Hostname:         hostname},
-		nil
+	ars := make([]*AgentResponse, 0)
+	for _, p := range r.Processes {
+		ar := &AgentResponse{
+			Status:   p.Status,
+			Pid:      p.Pid,
+			Port:     p.Port,
+			Name:     p.Name,
+			CmdLine:  p.CmdLine,
+			Hostname: hostname,
+		}
+		ars = append(ars, ar)
+	}
+
+	return ars, nil
+
+}
+func createPortsParam(ports []uint32) string {
+	numbers := make([]string, len(ports))
+	for i, port := range ports {
+		numbers[i] = fmt.Sprint(port)
+	}
+	return strings.Join(numbers, ",")
 }
 
 func findAgentProcess(addr IPPort, aps []*AgentProcess) *AgentProcess {

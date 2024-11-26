@@ -26,11 +26,13 @@ func (s *Server) Health(w http.ResponseWriter, r *http.Request) {
 	pollThreshold := s.Config.PollInterval * 3 // Allow for up to 3 missed polls
 
 	if time.Since(s.lastSuccessfulPoll) > pollThreshold {
+		// todo: log
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
 	if s.lastPollError != nil {
+		// todo: log
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
