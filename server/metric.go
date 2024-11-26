@@ -15,13 +15,13 @@ type PrometheusMetric struct {
 	conns prometheus.Gauge
 	conn  *prometheus.GaugeVec
 
-	commandLineRegexps []*regexp.Regexp
+	cmdlineRegexps []*regexp.Regexp
 }
 
 // NewPrometheusMetric creates and returns a new PrometheusMetric.
-func NewPrometheusMetric(commandLinePatterns []string) *PrometheusMetric {
+func NewPrometheusMetric(cmdlinePatterns []string) *PrometheusMetric {
 	return &PrometheusMetric{
-		commandLineRegexps: convertPatternsToRegexps(commandLinePatterns),
+		cmdlineRegexps: convertPatternsToRegexps(cmdlinePatterns),
 		conns: promauto.NewGauge(prometheus.GaugeOpts{
 			Name: "kimo_mysql_conns_total",
 			Help: "Total number of db processes (conns)",
@@ -67,16 +67,16 @@ func (pm *PrometheusMetric) Set(kps []KimoProcess) {
 			"host":    p.Host,
 			"command": p.Command,
 			"state":   p.State,
-			"cmdline": pm.formatCommand(p.CmdLine),
+			"cmdline": pm.formatCmdline(p.CmdLine),
 		}).Inc()
 	}
 }
 
-// formatCommand formats the command string based on configuration
-func (pm *PrometheusMetric) formatCommand(cmdline string) string {
+// formatCmdline formats the command string based on configuration
+func (pm *PrometheusMetric) formatCmdline(cmdline string) string {
 	// Expose whole cmdline if pattern matches.
-	for _, cmdRegexp := range pm.commandLineRegexps {
-		result := cmdRegexp.FindString(cmdline)
+	for _, cmdlineRegexp := range pm.cmdlineRegexps {
+		result := cmdlineRegexp.FindString(cmdline)
 		if result != "" {
 			return cmdline
 		}
