@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/cenkalti/log"
@@ -31,11 +30,6 @@ func (s *Server) Procs(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Can not encode process", http.StatusInternalServerError)
 	}
 
-}
-
-// Health is a dummy endpoint for load balancer health check
-func (s *Server) Health(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "OK")
 }
 
 // Static serves static files (web components).

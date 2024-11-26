@@ -52,14 +52,18 @@ func (s *Server) doPoll(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return fmt.Errorf("operation timed out while fetching all: %w", ctx.Err())
+		err := fmt.Errorf("operation timed out while fetching all: %w", ctx.Err())
+		s.UpdateHealth(err)
+		return err
 	case r := <-resultChan:
 		if r.err != nil {
+			s.UpdateHealth(r.err)
 			return r.err
 		}
 		kps := s.ConvertProcesses(r.rps)
 		s.SetProcesses(kps)
 		s.PrometheusMetric.Set(s.GetProcesses())
+		s.UpdateHealth(nil)
 		log.Debugf("%d processes are set\n", len(s.GetProcesses()))
 		return nil
 	}

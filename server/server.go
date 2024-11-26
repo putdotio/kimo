@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/cenkalti/log"
 )
@@ -28,12 +29,15 @@ type KimoProcess struct {
 
 // Server is a type for handling server side operations
 type Server struct {
-	Config           *config.ServerConfig
-	PrometheusMetric *PrometheusMetric
-	Fetcher          *Fetcher
-	AgentPort        uint32
-	processes        []KimoProcess
-	mu               sync.RWMutex // proctects processes
+	Config             *config.ServerConfig
+	PrometheusMetric   *PrometheusMetric
+	Fetcher            *Fetcher
+	AgentPort          uint32
+	processes          []KimoProcess
+	mu                 sync.RWMutex // proctects processes
+	lastSuccessfulPoll time.Time
+	lastPollError      error
+	healthMutex        sync.RWMutex
 }
 
 // SetProcesses sets kimo processes with lock
