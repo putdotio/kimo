@@ -32,8 +32,7 @@ func parsePortsParam(w http.ResponseWriter, req *http.Request) ([]uint32, error)
 	log.Debugf("Looking for process(es) for ports: %s\n", portsParam)
 
 	if portsParam == "" {
-		log.Errorln("ports param is not provided.")
-		return nil, fmt.Errorf("ports param is required") //todo: check again.
+		return nil, fmt.Errorf("ports param is required")
 	}
 
 	ports := strings.Split(portsParam, ",")
@@ -109,11 +108,11 @@ func (a *Agent) Process(w http.ResponseWriter, req *http.Request) {
 	// todo: cache result for a short period (10s? 30s?)
 	ports, err := parsePortsParam(w, req)
 	if err != nil {
-		http.Error(w, "port param is required", http.StatusBadRequest)
+		http.Error(w, "port params is required", http.StatusBadRequest)
 		return
 	}
 	ps := findProcesses(ports, a.GetConns())
-	if ps == nil {
+	if len(ps) == 0 {
 		http.Error(w, "Connection(s) not found", http.StatusNotFound)
 		return
 	}
