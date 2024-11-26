@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"kimo/config"
-	"strings"
 	"sync"
 	"time"
 
@@ -34,54 +33,6 @@ func (rp *RawProcess) AgentAddress() IPPort {
 		return IPPort{IP: rp.TCPProxyConn.ClientOut.IP, Port: rp.TCPProxyConn.ClientOut.Port}
 	}
 	return IPPort{IP: rp.MysqlRow.Address.IP, Port: rp.MysqlRow.Address.Port}
-}
-
-// AgentProcess represents process info from a kimo-agent.
-type AgentProcess struct {
-	Address  IPPort
-	Response *AgentResponse
-	err      error
-}
-
-// Hostname is kimo agent's hostname.
-func (ap *AgentProcess) Hostname() string {
-	if ap.Response != nil {
-		return ap.Response.Hostname
-	}
-
-	if ap.err != nil {
-		if aErr, ok := ap.err.(*AgentError); ok {
-			return aErr.Hostname
-		} else {
-			return ap.Address.IP
-		}
-	}
-
-	return ""
-}
-
-// Pid returns process pid info from kimo agent
-func (ap *AgentProcess) Pid() int {
-	if ap.Response != nil {
-		return ap.Response.Pid
-	}
-	return 0
-}
-
-// CmdLine returns process cmdline info from kimo agent
-func (ap *AgentProcess) CmdLine() string {
-	if ap.Response != nil {
-		return ap.Response.CmdLine
-	}
-	return ""
-}
-
-// ConnectionStatus returns process connections status info from kimo agent
-func (ap *AgentProcess) ConnectionStatus() string {
-	if ap.Response != nil {
-		return strings.ToLower(ap.Response.ConnectionStatus)
-	}
-	return ""
 }
 
 // Detail returns error detail of the process.
@@ -231,8 +182,16 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	apC := make(chan *AgentProcess, len(rps))
+	type result struct {
+		response *AgentResponse
+		err      error
+		address  IPPort
+	}
+
+	resultChan := make(chan *result, len(rps))
 	done := make(chan struct{}, 1)
+
+	// todo: group agent requests.
 
 	// Get results from agents
 	go func() {
@@ -243,39 +202,41 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 			go func(address IPPort, agentPort uint32) {
 				defer wg.Done()
 
-				ac := NewAgentClient(IPPort{IP: address.IP, Port: agentPort})
+				agentAddr := IPPort{IP: address.IP, Port: agentPort}
+				ac := NewAgentClient(agentAddr)
 				ar, err := ac.Get(ctx, address.Port)
-				apC <- &AgentProcess{Response: ar, err: err, Address: address}
+				resultChan <- &result{response: ar, err: err, address: address}
 			}(rp.AgentAddress(), f.AgentPort)
 		}
 		wg.Wait()
-		close(apC) // Close channel to signal no more results
+		close(resultChan) // Close channel to signal no more results
 		done <- struct{}{}
 	}()
 
 	// Collect results
-	var results []*AgentProcess
+	var aps []*AgentProcess
 
 	// Use a separate goroutine to collect results
-	resultsDone := make(chan struct{})
+	apsDone := make(chan struct{})
 	go func() {
-		for ap := range apC {
-			if ap != nil {
-				results = append(results, ap)
+		for result := range resultChan {
+			if result != nil {
+				ap := NewAgentProcesss(result.response, result.address, result.err)
+				aps = append(aps, ap)
 			}
 		}
-		close(resultsDone) // close channel to signal result collection is done.
+		close(apsDone) // close channel to signal result collection is done.
 	}()
 
 	// Wait for either completion or timeout
 	select {
 	case <-ctx.Done():
 		log.Errorf("fetch agents operation timed out: %s", ctx.Err())
-		return results
+		return aps
 	case <-done:
 		// Wait for all results to be collected
-		<-resultsDone
+		<-apsDone
 		log.Debugln("All agents are visited.")
-		return results
+		return aps
 	}
 }

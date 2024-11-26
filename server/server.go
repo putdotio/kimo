@@ -74,10 +74,10 @@ func (s *Server) ConvertProcesses(rps []*RawProcess) []KimoProcess {
 		kp.Info = rp.MysqlRow.Info.String
 
 		// set agent process properties
-		kp.CmdLine = rp.AgentProcess.CmdLine()
-		kp.ConnectionStatus = rp.AgentProcess.ConnectionStatus()
-		kp.Pid = rp.AgentProcess.Pid()
-		kp.Host = rp.AgentProcess.Hostname()
+		kp.CmdLine = rp.AgentProcess.Cmdline
+		kp.ConnectionStatus = rp.AgentProcess.ConnectionStatus
+		kp.Pid = rp.AgentProcess.Pid
+		kp.Host = rp.AgentProcess.Host()
 		kp.Detail = rp.Detail()
 
 		kps = append(kps, kp)

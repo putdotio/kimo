@@ -9,6 +9,45 @@ import (
 	"github.com/cenkalti/log"
 )
 
+// AgentProcess represents process info from a kimo-agent enhanced with response detail.
+type AgentProcess struct {
+	Pid              int
+	Name             string
+	Cmdline          string
+	ConnectionStatus string
+	Address          IPPort // kimo agent's address.
+	hostname         string
+	err              error
+}
+
+// NewAgentProcess creates and returns a new AgentProcess.
+func NewAgentProcesss(ar *AgentResponse, address IPPort, err error) *AgentProcess {
+	ap := new(AgentProcess)
+	ap.err = err
+	ap.Address = address
+
+	if ar != nil {
+		ap.Pid = ar.Pid
+		ap.Name = ar.Name
+		ap.Cmdline = ar.CmdLine
+		ap.hostname = ar.Hostname
+	}
+	return ap
+}
+
+// Host is kimo agent's hostname if response is returned, otherwise host's IP.
+func (ap *AgentProcess) Host() string {
+	if ap.hostname != "" {
+		return ap.hostname
+	}
+	if ap.err != nil {
+		if aErr, ok := ap.err.(*AgentError); ok {
+			return aErr.Hostname
+		}
+	}
+	return ap.Address.IP
+}
+
 // AgentClient represents an agent client to fetch get process from a kimo-agent
 type AgentClient struct {
 	Host string
