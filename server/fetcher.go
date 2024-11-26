@@ -53,7 +53,7 @@ func (ap *AgentProcess) Hostname() string {
 		if aErr, ok := ap.err.(*AgentError); ok {
 			return aErr.Hostname
 		} else {
-			return "ERROR"
+			return ap.Address.IP
 		}
 	}
 
@@ -109,13 +109,15 @@ func NewFetcher(cfg config.ServerConfig) *Fetcher {
 	return f
 }
 
-// getAgentProcess gets process info from a single kimo-agent.
-func (f *Fetcher) getAgentProcess(ctx context.Context, wg *sync.WaitGroup, rp *RawProcess) {
-	defer wg.Done()
-
-	ac := NewAgentClient(IPPort{IP: rp.AgentAddress().IP, Port: f.AgentPort})
-	ar, err := ac.Get(ctx, rp.AgentAddress().Port)
-	rp.AgentProcess = &AgentProcess{Response: ar, err: err}
+// createRawProcesses creates raw process and inserts given param.
+func createRawProcesses(rows []*MysqlRow) []*RawProcess {
+	log.Debugln("Creating raw processes...")
+	var rps []*RawProcess
+	for _, row := range rows {
+		rp := &RawProcess{MysqlRow: row}
+		rps = append(rps, rp)
+	}
+	return rps
 }
 
 // addProxyConns adds TCPProxy connection info if TCPProxy is enabled.
@@ -128,16 +130,14 @@ func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
 		}
 	}
 }
-
-// createRawProcesses creates raw process and inserts given param.
-func createRawProcesses(rows []*MysqlRow) []*RawProcess {
-	log.Debugln("Creating raw processes...")
-	var rps []*RawProcess
-	for _, row := range rows {
-		rp := &RawProcess{MysqlRow: row}
-		rps = append(rps, rp)
+func addAgentProcesses(rps []*RawProcess, aps []*AgentProcess) {
+	log.Debugln("Adding agent processes...")
+	for _, rp := range rps {
+		ap := findAgentProcess(rp.AgentAddress(), aps)
+		if ap != nil {
+			rp.AgentProcess = ap
+		}
 	}
-	return rps
 }
 
 // FetchAll fetches and creates processes from resources to agents
@@ -149,7 +149,7 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debugln("Got %d mysql rows \n", len(rows))
+	log.Debugf("Got %d mysql rows \n", len(rows))
 
 	rps := createRawProcesses(rows)
 
@@ -168,7 +168,9 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	}
 
 	log.Debugf("Fetching %d agents...\n", len(rps))
-	f.fetchAgents(ctx, rps)
+	aps := f.fetchAgents(ctx, rps)
+
+	addAgentProcesses(rps, aps)
 
 	log.Debugf("%d raw processes are generated \n", len(rps))
 	return rps, nil
@@ -225,28 +227,55 @@ func (f *Fetcher) fetchTcpProxy(ctx context.Context) ([]*TCPProxyConn, error) {
 }
 
 // fetchAgents concurrently retrieves process information from multiple agents with timeout.
-func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) {
+func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentProcess {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
+	apC := make(chan *AgentProcess, len(rps))
 	done := make(chan struct{}, 1)
+
+	// Get results from agents
 	go func() {
 		// todo: limit concurrent goroutines.
 		var wg sync.WaitGroup
 		for _, rp := range rps {
 			wg.Add(1)
-			go f.getAgentProcess(ctx, &wg, rp)
+			go func(address IPPort, agentPort uint32) {
+				defer wg.Done()
+
+				ac := NewAgentClient(IPPort{IP: address.IP, Port: agentPort})
+				ar, err := ac.Get(ctx, address.Port)
+				apC <- &AgentProcess{Response: ar, err: err, Address: address}
+			}(rp.AgentAddress(), f.AgentPort)
 		}
 		wg.Wait()
+		close(apC) // Close channel to signal no more results
 		done <- struct{}{}
 	}()
 
+	// Collect results
+	var results []*AgentProcess
+
+	// Use a separate goroutine to collect results
+	resultsDone := make(chan struct{})
+	go func() {
+		for ap := range apC {
+			if ap != nil {
+				results = append(results, ap)
+			}
+		}
+		close(resultsDone) // close channel to signal result collection is done.
+	}()
+
+	// Wait for either completion or timeout
 	select {
 	case <-ctx.Done():
 		log.Errorf("fetch agents operation timed out: %s", ctx.Err())
-		return
+		return results
 	case <-done:
+		// Wait for all results to be collected
+		<-resultsDone
 		log.Debugln("All agents are visited.")
-		return
+		return results
 	}
 }

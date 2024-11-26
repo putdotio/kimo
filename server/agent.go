@@ -84,3 +84,12 @@ func (ac *AgentClient) Get(ctx context.Context, port uint32) (*AgentResponse, er
 			Hostname:         hostname},
 		nil
 }
+
+func findAgentProcess(addr IPPort, aps []*AgentProcess) *AgentProcess {
+	for _, ap := range aps {
+		if ap.Address.IP == addr.IP && ap.Address.Port == addr.Port {
+			return ap
+		}
+	}
+	return nil
+}
