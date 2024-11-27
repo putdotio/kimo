@@ -14,9 +14,15 @@ import (
 // Agent is type for handling agent operations
 type Agent struct {
 	Config   *config.AgentConfig
-	conns    []gopsutilNet.ConnectionStat //todo: store only what we need.
+	conns    []Conn
 	Hostname string
 	mu       sync.RWMutex // protects conns
+}
+
+type Conn struct {
+	Port   uint32
+	Pid    int32
+	Status string
 }
 
 // NewAgent creates an returns a new Agent
@@ -28,17 +34,30 @@ func NewAgent(cfg *config.AgentConfig) *Agent {
 }
 
 // SetConns sets connections with lock.
-func (a *Agent) SetConns(conns []gopsutilNet.ConnectionStat) {
+func (a *Agent) SetConns(conns []Conn) {
 	a.mu.Lock()
 	a.conns = conns
 	a.mu.Unlock()
 }
 
 // GetConns gets connections with lock.
-func (a *Agent) GetConns() []gopsutilNet.ConnectionStat {
+func (a *Agent) GetConns() []Conn {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.conns
+}
+
+func (a *Agent) ConvertConns(gopsConns []gopsutilNet.ConnectionStat) []Conn {
+	conns := make([]Conn, 0)
+	for _, cs := range gopsConns {
+		conn := Conn{
+			Port:   cs.Laddr.Port,
+			Status: cs.Status,
+			Pid:    cs.Pid,
+		}
+		conns = append(conns, conn)
+	}
+	return conns
 }
 
 // getHostname returns hostname.

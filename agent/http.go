@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/cenkalti/log"
-	gopsutilNet "github.com/shirou/gopsutil/v4/net"
 	gopsutilProcess "github.com/shirou/gopsutil/v4/process"
 )
 
@@ -16,7 +15,7 @@ import (
 type Process struct {
 	Status  string `json:"status"`
 	Pid     int32  `json:"pid"`
-	Port    int32  `json:"port"`
+	Port    uint32 `json:"port"`
 	Name    string `json:"name"`
 	CmdLine string `json:"cmdline"`
 }
@@ -50,11 +49,11 @@ func parsePortsParam(w http.ResponseWriter, req *http.Request) ([]uint32, error)
 }
 
 // findProcesses finds process(es) those have connections with given ports.
-func findProcesses(ports []uint32, conns []gopsutilNet.ConnectionStat) []*Process {
+func findProcesses(ports []uint32, conns []Conn) []*Process {
 	ps := make([]*Process, 0)
 
 	for _, conn := range conns {
-		if !portExists(conn.Laddr.Port, ports) {
+		if !portExists(conn.Port, ports) {
 			continue
 		}
 
@@ -82,7 +81,7 @@ func findProcesses(ports []uint32, conns []gopsutilNet.ConnectionStat) []*Proces
 		p := &Process{
 			Status:  conn.Status,
 			Pid:     conn.Pid,
-			Port:    int32(conn.Laddr.Port),
+			Port:    conn.Port,
 			Name:    name,
 			CmdLine: cmdline,
 		}

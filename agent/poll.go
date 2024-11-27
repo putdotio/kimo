@@ -34,11 +34,12 @@ func (a *Agent) pollConns(ctx context.Context) {
 // doPoll retrieves the current network connections and updates the Agent's connection state.
 // It returns an error if fetching connections fails.
 func (a *Agent) doPoll(ctx context.Context) error {
-	conns, err := getConns(ctx)
+	gopsConns, err := getConns(ctx)
 	if err != nil {
 		return err
 	}
 
+	conns := a.ConvertConns(gopsConns)
 	a.SetConns(conns)
 
 	log.Debugf("Updated connections: %d", len(conns))
