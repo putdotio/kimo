@@ -126,8 +126,9 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 		addProxyConns(rps, tps)
 	}
 
-	log.Debugf("Fetching %d agents...\n", len(rps))
+	log.Debugln("Fetching agents...")
 	aps := f.fetchAgents(ctx, rps)
+	log.Debugf("Got %d agent processes \n", len(aps))
 
 	addAgentProcesses(rps, aps)
 
