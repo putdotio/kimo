@@ -14,7 +14,21 @@
                 .then(d => {
                     var table = new Tabulator('#procs', {
                         data: d.processes,
-                        height: 800,
+                        clipboard:"copy", //enable clipboard functionalit
+                        clipboardCopyRowRange:"selected", //change default selector to selected
+                        clipboardCopyConfig:{
+                            columnHeaders:false, //do not include column headers in clipboard output
+                            columnGroups:false, //do not include column groups in column headers for printed table
+                            rowHeaders:false, //do not include row headers in clipboard output
+                            rowGroups:false, //do not include row groups in clipboard output
+                            columnCalcs:false, //do not include column calculation rows in clipboard output
+                            dataTree:false, //do not include data tree in printed table
+                            formatCells:false, //show raw cell values without formatter
+                        },
+                        persistence:true, //enable table persistence
+                        selectableRows:true,
+                        selectableRowsRangeMode:"click",
+                        height: 1200,
                         layout: 'fitDataStretch',
                         pagination: 'local',
                         paginationSize: 50,
