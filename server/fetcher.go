@@ -199,9 +199,8 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 
 	agentIPPorts := make(map[string][]uint32)
 	for _, rp := range rps {
-		ports := agentIPPorts[rp.AgentAddress().IP]
-		ports = append(ports, rp.AgentAddress().Port)
-		agentIPPorts[rp.AgentAddress().IP] = ports
+		addr := rp.AgentAddress()
+		agentIPPorts[addr.IP] = append(agentIPPorts[addr.IP], addr.Port)
 	}
 
 	done := make(chan struct{}, 1)
@@ -237,8 +236,7 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 		for result := range resultChan {
 			if result != nil {
 				for _, resp := range result.response {
-					addr := IPPort{IP: result.IP, Port: resp.Port}
-					ap := NewAgentProcesss(resp, addr, result.err)
+					ap := NewAgentProcesss(resp, result.IP, resp.Port, result.err)
 					aps = append(aps, ap)
 				}
 			}

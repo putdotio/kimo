@@ -13,19 +13,21 @@ import (
 // AgentProcess represents process info from a kimo-agent enhanced with response detail.
 type AgentProcess struct {
 	Pid              uint32
+	Port             uint32 // process uses this port to communicate with MySQL.
 	Name             string
 	Cmdline          string
 	ConnectionStatus string
-	Address          IPPort // kimo agent's address.
+	IP               string // kimo agent's IP.
 	hostname         string
 	err              error
 }
 
 // NewAgentProcess creates and returns a new AgentProcess.
-func NewAgentProcesss(ar *AgentResponse, address IPPort, err error) *AgentProcess {
+func NewAgentProcesss(ar *AgentResponse, ip string, port uint32, err error) *AgentProcess {
 	ap := new(AgentProcess)
 	ap.err = err
-	ap.Address = address
+	ap.IP = ip
+	ap.Port = port
 
 	if ar != nil {
 		ap.Pid = ar.Pid
@@ -47,7 +49,7 @@ func (ap *AgentProcess) Host() string {
 			return aErr.Hostname
 		}
 	}
-	return ap.Address.IP
+	return ap.IP
 }
 
 // AgentClient represents an agent client to fetch get process from a kimo-agent
@@ -147,7 +149,7 @@ func createPortsParam(ports []uint32) string {
 
 func findAgentProcess(addr IPPort, aps []*AgentProcess) *AgentProcess {
 	for _, ap := range aps {
-		if ap.Address.IP == addr.IP && ap.Address.Port == addr.Port {
+		if ap.IP == addr.IP && ap.Port == addr.Port {
 			return ap
 		}
 	}
