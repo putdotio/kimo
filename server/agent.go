@@ -10,51 +10,48 @@ import (
 	"github.com/cenkalti/log"
 )
 
-// AgentProcess represents process info from a kimo-agent enhanced with response detail.
+// AgentProcess represents process info from a kimo-agent
 type AgentProcess struct {
 	Pid              uint32
 	Port             uint32 // process uses this port to communicate with MySQL.
 	Name             string
 	Cmdline          string
 	ConnectionStatus string
-	IP               string // kimo agent's IP.
-	hostname         string
-	err              error
 }
 
-// NewAgentProcess creates and returns a new AgentProcess.
-func NewAgentProcesss(ar *AgentResponse, ip string, port uint32, err error) *AgentProcess {
-	ap := new(AgentProcess)
-	ap.err = err
-	ap.IP = ip
-	ap.Port = port
-
-	if ar != nil {
-		ap.Pid = ar.Pid
-		ap.Name = ar.Name
-		ap.Cmdline = ar.CmdLine
-		ap.hostname = ar.Hostname
-		ap.ConnectionStatus = ar.Status
-	}
-	return ap
+// EnhancedAgentProcess represents process info along with agent's and connection's properties (error, hostname etc.)
+type EnhancedAgentProcess struct {
+	AgentProcess
+	hostname string
+	ip       string
+	err      error
 }
 
 // Host is kimo agent's hostname if response is returned, otherwise host's IP.
-func (ap *AgentProcess) Host() string {
-	if ap.hostname != "" {
-		return ap.hostname
+func (eap *EnhancedAgentProcess) Host() string {
+	if eap.hostname != "" {
+		return eap.hostname
 	}
-	if ap.err != nil {
-		if aErr, ok := ap.err.(*AgentError); ok {
+	if eap.err != nil {
+		if aErr, ok := eap.err.(*AgentError); ok {
 			return aErr.Hostname
 		}
 	}
-	return ap.IP
+	return eap.ip
+}
+
+// AgentResponse combines kimo-agent's response and http response detail.
+type AgentResponse struct {
+	err      error
+	hostname string
+	ip       string
+
+	Processes []*AgentProcess
 }
 
 // AgentClient represents an agent client to fetch get process from a kimo-agent
 type AgentClient struct {
-	Address IPPort
+	Address IPPort // kimo-agent listens this address
 }
 
 // AgentError represents an HTTP error that is retured from kimo-agent.
@@ -63,82 +60,51 @@ type AgentError struct {
 	Status   string
 }
 
-// AgentResponse represents a success response from kimo-agent.
-type AgentResponse struct {
-	Hostname string
-	Status   string
-	Pid      uint32
-	Name     string
-	CmdLine  string
-	Port     uint32
-}
-
 func (ae *AgentError) Error() string {
 	return fmt.Sprintf("Agent error. Host: %s - status: %s\n", ae.Hostname, ae.Status)
 }
 
 // NewAgentClient creates and returns a new AgentClient.
 func NewAgentClient(address IPPort) *AgentClient {
-	// kimo-agent listens this address
 	return &AgentClient{Address: address}
 }
 
 // Get gets process info from kimo agent.
-func (ac *AgentClient) Get(ctx context.Context, ports []uint32) ([]*AgentResponse, error) {
+func (ac *AgentClient) Get(ctx context.Context, ports []uint32) *AgentResponse {
 	url := fmt.Sprintf("http://%s:%d/proc?ports=%s", ac.Address.IP, ac.Address.Port, createPortsParam(ports))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+
 	if err != nil {
-		return nil, err
+		return &AgentResponse{err: err, ip: ac.Address.IP}
 	}
 	client := &http.Client{}
 	log.Debugf("Requesting to %s\n", url)
 	response, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return &AgentResponse{err: err, ip: ac.Address.IP}
 	}
 
 	defer response.Body.Close()
 	hostname := response.Header.Get("X-Kimo-Hostname")
 	if response.StatusCode != 200 {
-		return nil, &AgentError{Hostname: hostname, Status: response.Status}
+		return &AgentResponse{ip: ac.Address.IP, err: &AgentError{Hostname: hostname, Status: response.Status}}
 	}
 
-	type process struct {
-		Status  string `json:"status"`
-		Pid     uint32 `json:"pid"`
-		Port    uint32 `json:"port"`
-		Name    string `json:"name"`
-		CmdLine string `json:"cmdline"`
+	var r struct {
+		Processes []*AgentProcess `json:"processes"`
 	}
-
-	type Response struct {
-		Processes []*process `json:"processes"`
-	}
-
-	var r Response
 	err = json.NewDecoder(response.Body).Decode(&r)
 
 	if err != nil {
 		log.Errorln(err.Error())
-		return nil, err
+		return &AgentResponse{err: err, hostname: hostname, ip: ac.Address.IP}
 	}
 
-	ars := make([]*AgentResponse, 0)
-	for _, p := range r.Processes {
-		ar := &AgentResponse{
-			Status:   p.Status,
-			Pid:      p.Pid,
-			Port:     p.Port,
-			Name:     p.Name,
-			CmdLine:  p.CmdLine,
-			Hostname: hostname,
-		}
-		ars = append(ars, ar)
-	}
-
-	return ars, nil
+	return &AgentResponse{hostname: hostname, ip: ac.Address.IP, Processes: r.Processes}
 
 }
+
+// createPortsParam creates comma seperated ports param from given slice of port numbers.
 func createPortsParam(ports []uint32) string {
 	numbers := make([]string, len(ports))
 	for i, port := range ports {
@@ -147,10 +113,22 @@ func createPortsParam(ports []uint32) string {
 	return strings.Join(numbers, ",")
 }
 
-func findAgentProcess(addr IPPort, aps []*AgentProcess) *AgentProcess {
-	for _, ap := range aps {
-		if ap.IP == addr.IP && ap.Port == addr.Port {
-			return ap
+// findProcess finds EnhancedAgentProcess for given port from agent responses.
+func findProcess(addr IPPort, ars []*AgentResponse) *EnhancedAgentProcess {
+	for _, ar := range ars {
+		if addr.IP == ar.ip {
+			eap := &EnhancedAgentProcess{ // kimo-agent returns response
+				hostname: ar.hostname,
+				ip:       ar.ip,
+				err:      ar.err,
+			}
+			for _, ap := range ar.Processes {
+				if addr.Port == ap.Port { // kimo-agent returns response with process
+					eap.AgentProcess = *ap
+					break
+				}
+			}
+			return eap
 		}
 	}
 	return nil

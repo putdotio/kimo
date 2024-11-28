@@ -22,7 +22,7 @@ type Fetcher struct {
 type RawProcess struct {
 	MysqlRow     *MysqlRow
 	TCPProxyConn *TCPProxyConn
-	AgentProcess *AgentProcess
+	Process      *EnhancedAgentProcess
 
 	TCPProxyEnabled bool
 }
@@ -35,23 +35,15 @@ func (rp *RawProcess) AgentAddress() IPPort {
 	return IPPort{IP: rp.MysqlRow.Address.IP, Port: rp.MysqlRow.Address.Port}
 }
 
-// AgentHost returns agent's host
-func (rp *RawProcess) AgentHost() string {
-	if rp.AgentProcess != nil {
-		return rp.AgentProcess.Host()
-	}
-	return rp.AgentAddress().IP
-}
-
 // Detail returns error detail of the process.
 func (rp *RawProcess) Detail() string {
 	if rp.TCPProxyEnabled && rp.TCPProxyConn == nil {
 		return "No connection found on tcpproxy"
 	}
 
-	if rp.AgentProcess != nil {
-		if rp.AgentProcess.err != nil {
-			return rp.AgentProcess.err.Error()
+	if rp.Process != nil {
+		if rp.Process.err != nil {
+			return rp.Process.err.Error()
 		}
 	}
 	return ""
@@ -89,12 +81,12 @@ func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
 		}
 	}
 }
-func addAgentProcesses(rps []*RawProcess, aps []*AgentProcess) {
+func addAgentProcesses(rps []*RawProcess, ars []*AgentResponse) {
 	log.Debugln("Adding agent processes...")
 	for _, rp := range rps {
-		ap := findAgentProcess(rp.AgentAddress(), aps)
-		if ap != nil {
-			rp.AgentProcess = ap
+		eap := findProcess(rp.AgentAddress(), ars)
+		if eap != nil {
+			rp.Process = eap
 		}
 	}
 }
@@ -127,10 +119,10 @@ func (f *Fetcher) FetchAll(ctx context.Context) ([]*RawProcess, error) {
 	}
 
 	log.Debugln("Fetching agents...")
-	aps := f.fetchAgents(ctx, rps)
-	log.Debugf("Got %d agent processes \n", len(aps))
+	ars := f.fetchAgents(ctx, rps)
+	log.Debugf("Got %d agent responses \n", len(ars))
 
-	addAgentProcesses(rps, aps)
+	addAgentProcesses(rps, ars)
 
 	log.Debugf("%d raw processes are generated \n", len(rps))
 	return rps, nil
@@ -187,15 +179,9 @@ func (f *Fetcher) fetchTcpProxy(ctx context.Context) ([]*TCPProxyConn, error) {
 }
 
 // fetchAgents concurrently retrieves process information from multiple agents with timeout.
-func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentProcess {
+func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentResponse {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
-
-	type result struct {
-		response []*AgentResponse
-		err      error
-		IP       string // todo: fix ambiguity.
-	}
 
 	agentIPPorts := make(map[string][]uint32)
 	for _, rp := range rps {
@@ -204,9 +190,9 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 	}
 
 	done := make(chan struct{}, 1)
-	resultChan := make(chan *result, len(agentIPPorts))
+	resultChan := make(chan *AgentResponse, len(agentIPPorts))
 
-	// Get results from agents
+	// Get responses from agents
 	go func() {
 		// todo: limit concurrent goroutines.
 		var wg sync.WaitGroup
@@ -218,8 +204,8 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 				defer wg.Done()
 
 				ac := NewAgentClient(address)
-				ar, err := ac.Get(ctx, ports)
-				resultChan <- &result{response: ar, err: err, IP: address.IP}
+				ar := ac.Get(ctx, ports)
+				resultChan <- ar
 			}(agentAddr, ports)
 		}
 		wg.Wait()
@@ -228,31 +214,28 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 	}()
 
 	// Collect results
-	var aps []*AgentProcess
+	var ars []*AgentResponse
 
 	// Use a separate goroutine to collect results
-	apsDone := make(chan struct{})
+	arsDone := make(chan struct{})
 	go func() {
 		for result := range resultChan {
 			if result != nil {
-				for _, resp := range result.response {
-					ap := NewAgentProcesss(resp, result.IP, resp.Port, result.err)
-					aps = append(aps, ap)
-				}
+				ars = append(ars, result)
 			}
 		}
-		close(apsDone) // close channel to signal result collection is done.
+		close(arsDone) // close channel to signal result collection is done.
 	}()
 
 	// Wait for either completion or timeout
 	select {
 	case <-ctx.Done():
 		log.Errorf("fetch agents operation timed out: %s", ctx.Err())
-		return aps
+		return ars
 	case <-done:
 		// Wait for all results to be collected
-		<-apsDone
-		log.Debugf("All agents are visited. %d processes found \n", len(aps))
-		return aps
+		<-arsDone
+		log.Debugf("All agents are visited. %d processes found \n", len(ars))
+		return ars
 	}
 }
