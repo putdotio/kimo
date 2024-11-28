@@ -35,7 +35,7 @@ func (rp *RawProcess) AgentAddress() IPPort {
 	return IPPort{IP: rp.MysqlRow.Address.IP, Port: rp.MysqlRow.Address.Port}
 }
 
-// Detail returns error detail of the process.
+// Detail returns error detail for the process.
 func (rp *RawProcess) Detail() string {
 	if rp.TCPProxyEnabled && rp.TCPProxyConn == nil {
 		return "No connection found on tcpproxy"
@@ -81,6 +81,8 @@ func addProxyConns(rps []*RawProcess, conns []*TCPProxyConn) {
 		}
 	}
 }
+
+// addAgentProcesses adds Proxy info to raw processes.
 func addAgentProcesses(rps []*RawProcess, ars []*AgentResponse) {
 	log.Debugln("Adding agent processes...")
 	for _, rp := range rps {

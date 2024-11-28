@@ -12,11 +12,11 @@ import (
 
 // AgentProcess represents process info from a kimo-agent
 type AgentProcess struct {
-	Pid              uint32
-	Port             uint32 // process uses this port to communicate with MySQL.
-	Name             string
-	Cmdline          string
-	ConnectionStatus string
+	ConnectionStatus string `json:"status"`
+	Pid              uint32 `json:"pid"`
+	Port             uint32 `json:"port"` // process uses this port to communicate with MySQL.
+	Name             string `json:"name"`
+	Cmdline          string `json:"cmdline"`
 }
 
 // EnhancedAgentProcess represents process info along with agent's and connection's properties (error, hostname etc.)
@@ -31,11 +31,6 @@ type EnhancedAgentProcess struct {
 func (eap *EnhancedAgentProcess) Host() string {
 	if eap.hostname != "" {
 		return eap.hostname
-	}
-	if eap.err != nil {
-		if aErr, ok := eap.err.(*AgentError); ok {
-			return aErr.Hostname
-		}
 	}
 	return eap.ip
 }
@@ -54,16 +49,6 @@ type AgentClient struct {
 	Address IPPort // kimo-agent listens this address
 }
 
-// AgentError represents an HTTP error that is retured from kimo-agent.
-type AgentError struct {
-	Hostname string
-	Status   string
-}
-
-func (ae *AgentError) Error() string {
-	return fmt.Sprintf("Agent error. Host: %s - status: %s\n", ae.Hostname, ae.Status)
-}
-
 // NewAgentClient creates and returns a new AgentClient.
 func NewAgentClient(address IPPort) *AgentClient {
 	return &AgentClient{Address: address}
@@ -75,19 +60,19 @@ func (ac *AgentClient) Get(ctx context.Context, ports []uint32) *AgentResponse {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	if err != nil {
-		return &AgentResponse{err: err, ip: ac.Address.IP}
+		return &AgentResponse{ip: ac.Address.IP, err: err}
 	}
 	client := &http.Client{}
 	log.Debugf("Requesting to %s\n", url)
 	response, err := client.Do(req)
 	if err != nil {
-		return &AgentResponse{err: err, ip: ac.Address.IP}
+		return &AgentResponse{ip: ac.Address.IP, err: err}
 	}
 
 	defer response.Body.Close()
 	hostname := response.Header.Get("X-Kimo-Hostname")
 	if response.StatusCode != 200 {
-		return &AgentResponse{ip: ac.Address.IP, err: &AgentError{Hostname: hostname, Status: response.Status}}
+		return &AgentResponse{ip: ac.Address.IP, err: fmt.Errorf(response.Status), hostname: hostname}
 	}
 
 	var r struct {
@@ -97,10 +82,10 @@ func (ac *AgentClient) Get(ctx context.Context, ports []uint32) *AgentResponse {
 
 	if err != nil {
 		log.Errorln(err.Error())
-		return &AgentResponse{err: err, hostname: hostname, ip: ac.Address.IP}
+		return &AgentResponse{ip: ac.Address.IP, err: err, hostname: hostname}
 	}
 
-	return &AgentResponse{hostname: hostname, ip: ac.Address.IP, Processes: r.Processes}
+	return &AgentResponse{ip: ac.Address.IP, hostname: hostname, Processes: r.Processes}
 
 }
 
