@@ -15,7 +15,7 @@ type Fetcher struct {
 	MysqlClient    *MysqlClient
 	TCPProxyClient *TCPProxyClient
 
-	AgentPort uint32
+	AgentListenPort uint32
 }
 
 // RawProcess combines resources information(mysql row, tcp proxy conn, agent process etc.)
@@ -64,7 +64,7 @@ func NewFetcher(cfg config.ServerConfig) *Fetcher {
 	if cfg.TCPProxy.MgmtAddress != "" {
 		f.TCPProxyClient = NewTCPProxyClient(cfg.TCPProxy)
 	}
-	f.AgentPort = cfg.Agent.Port
+	f.AgentListenPort = cfg.Agent.Port
 	return f
 }
 
@@ -213,7 +213,7 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentPr
 		for agentIP, ports := range agentIPPorts {
 			wg.Add(1)
 
-			agentAddr := IPPort{IP: agentIP, Port: f.AgentPort}
+			agentAddr := IPPort{IP: agentIP, Port: f.AgentListenPort}
 			go func(address IPPort, ports []uint32) {
 				defer wg.Done()
 

@@ -32,7 +32,7 @@ type Server struct {
 	Config             *config.ServerConfig
 	PrometheusMetric   *PrometheusMetric
 	Fetcher            *Fetcher
-	AgentPort          uint32
+	AgentListenPort    uint32
 	processes          []KimoProcess
 	mu                 sync.RWMutex // proctects processes
 	lastSuccessfulPoll time.Time
@@ -95,7 +95,7 @@ func NewServer(cfg *config.ServerConfig) *Server {
 		Config:           cfg,
 		PrometheusMetric: NewPrometheusMetric(cfg.Metric.CmdlinePatterns),
 		processes:        make([]KimoProcess, 0),
-		AgentPort:        cfg.Agent.Port,
+		AgentListenPort:  cfg.Agent.Port,
 	}
 	s.Fetcher = NewFetcher(*s.Config)
 	return s
