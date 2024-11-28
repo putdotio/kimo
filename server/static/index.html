@@ -12,7 +12,12 @@
             fetch('/procs')
                 .then(d => d.json())
                 .then(d => {
-                    var table = new Tabulator('#procs', {
+                        // Add row IDs to the data
+                        d.processes = d.processes.map((process, index) => ({
+                            'Row ID': index + 1,  // Add Row ID starting from 1
+                            ...process
+                        }));
+                        var table = new Tabulator('#procs', {
                         data: d.processes,
                         clipboard:"copy", //enable clipboard functionality
                         clipboardCopyRowRange:"selected", //change default selector to selected
@@ -46,6 +51,13 @@
                             element.innerHTML = data.length;
                         },
                         columns:[
+                            {
+                                title: "",
+                                headerHozAlign: "center",
+                                columns:[
+                                    { field: 'Row ID', title: 'Row ID' , sorter: 'number', headerFilter: 'input'},
+                                ]
+                            },
                             {
                                 title: "MySQL",
                                 headerHozAlign: "center",
