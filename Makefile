@@ -13,8 +13,6 @@ build-dependencies:
 	docker-compose build mysql
 	docker-compose build kimo
 up:
-	docker-compose stop
-	docker-compose rm -fsv
 	docker-compose build kimo
 	docker-compose up --build kimo-server kimo-agent
 lint:
