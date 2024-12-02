@@ -72,7 +72,10 @@ func (ac *AgentClient) Get(ctx context.Context, ports []uint32) *AgentResponse {
 	defer response.Body.Close()
 	hostname := response.Header.Get("X-Kimo-Hostname")
 	if response.StatusCode != 200 {
-		return &AgentResponse{ip: ac.Address.IP, err: fmt.Errorf(response.Status), hostname: hostname}
+		return &AgentResponse{
+			ip:       ac.Address.IP,
+			err:      fmt.Errorf("HTTP request failed: %s", response.Status),
+			hostname: hostname}
 	}
 
 	var r struct {
