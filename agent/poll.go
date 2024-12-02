@@ -10,13 +10,17 @@ import (
 )
 
 // pollConns periodically checks for connections.
-func (a *Agent) pollConns(ctx context.Context) {
+func (a *Agent) pollConns(ctx context.Context) error {
 	log.Infoln("Polling started...")
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	ticker := time.NewTicker(a.Config.PollInterval)
 
 	// Initial poll
 	if err := a.doPoll(ctx); err != nil {
 		log.Errorf("Initial poll failed: %v", err)
+		return err
 	}
 
 	for {
@@ -26,7 +30,8 @@ func (a *Agent) pollConns(ctx context.Context) {
 				log.Errorf("Poll failed: %v", err)
 			}
 		case <-ctx.Done():
-			return
+			log.Infoln("Polling stopped.")
+			return nil
 		}
 	}
 }
@@ -67,7 +72,7 @@ func getConns(ctx context.Context) ([]gopsutilNet.ConnectionStat, error) {
 
 	select {
 	case <-ctx.Done():
-		return nil, fmt.Errorf("operation timed out: %w", ctx.Err())
+		return nil, fmt.Errorf("getConns operation stopped: %w", ctx.Err())
 	case r := <-resultChan:
 		return r.conns, r.err
 	}

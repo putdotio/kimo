@@ -74,6 +74,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Errorln(err)
+		log.Errorf("Error occured: %s\n", err.Error())
 	}
 }

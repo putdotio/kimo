@@ -232,7 +232,7 @@ func (f *Fetcher) fetchAgents(ctx context.Context, rps []*RawProcess) []*AgentRe
 	// Wait for either completion or timeout
 	select {
 	case <-ctx.Done():
-		log.Errorf("fetch agents operation timed out: %s", ctx.Err())
+		log.Infof("fetch agents operation stopped: %s", ctx.Err())
 		return ars
 	case <-done:
 		// Wait for all results to be collected

@@ -2,10 +2,14 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"kimo/config"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/cenkalti/log"
@@ -38,6 +42,7 @@ type Server struct {
 	lastSuccessfulPoll time.Time
 	lastPollError      error
 	healthMutex        sync.RWMutex
+	httpSrv            http.Server
 }
 
 // SetProcesses sets kimo processes with lock
@@ -98,6 +103,18 @@ func NewServer(cfg *config.ServerConfig) *Server {
 		AgentListenPort:  cfg.Agent.Port,
 	}
 	s.Fetcher = NewFetcher(*s.Config)
+
+	// create http server
+	mux := http.NewServeMux()
+	mux.Handle("/", s.Static())
+	mux.Handle("/metrics", s.Metrics())
+	mux.HandleFunc("/procs", s.Procs)
+	mux.HandleFunc("/health", s.Health)
+	s.httpSrv = http.Server{
+		Addr:    s.Config.ListenAddress,
+		Handler: mux,
+	}
+
 	return s
 }
 
@@ -105,19 +122,41 @@ func NewServer(cfg *config.ServerConfig) *Server {
 func (s *Server) Run() error {
 	log.Infof("Running server on %s \n", s.Config.ListenAddress)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	errChan := make(chan error, 1)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	go s.pollAgents(ctx)
+	// Start server in a goroutine
+	go func() {
+		if err := s.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- fmt.Errorf("http server error: %w", err)
+		}
+	}()
 
-	http.Handle("/", s.Static())
-	http.Handle("/metrics", s.Metrics())
-	http.HandleFunc("/procs", s.Procs)
-	http.HandleFunc("/health", s.Health)
-	err := http.ListenAndServe(s.Config.ListenAddress, nil)
-	if err != nil {
-		log.Errorln(err.Error())
+	// Poll kimo agents in a goroutine
+	go func() {
+		if err := s.pollAgents(ctx); err != nil {
+			errChan <- fmt.Errorf("agent polling error: %w", err)
+		}
+	}()
+
+	// Wait for interrupt signal or error
+	select {
+	case <-ctx.Done():
+		log.Infof("Received signal, starting shutdown...")
+	case err := <-errChan:
+		log.Infof("Received error: %v, starting shutdown...", err)
 		return err
 	}
+
+	// Graceful shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {
+		log.Infof("HTTP server shutdown failed: %v", err)
+		return err
+	}
+	log.Infoln("Server gracefully stopped")
 	return nil
 }
